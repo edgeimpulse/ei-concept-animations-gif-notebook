@@ -76,9 +76,7 @@ python python/animation_pipeline.py --preset ml_learning_blocks_individual
 | Preset | Preview |
 |---|---|
 | `dsp_sine_shift` | ![dsp_sine_shift](./img/dsp_sine_shift.gif) |
-| `dsp_processing_blocks` | ![dsp_processing_blocks](./img/dsp_processing_blocks.gif) |
 | `nn_sigmoid_shift` | ![nn_sigmoid_shift](./img/nn_sigmoid_shift.gif) |
-| `ml_learning_blocks` | ![ml_learning_blocks](./img/ml_learning_blocks.gif) |
 | `sine_bead` | ![sine_bead](./img/sine_bead.gif) |
 | `gapminder_full` | ![gapminder_full](./img/gapminder_full.gif) |
 
