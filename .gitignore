@@ -6,7 +6,6 @@ __pycache__/
 venv/
 .ipynb_checkpoints/
 
-img/*
 scratch/*
 !img/.gitkeep
 !scratch/.gitkeep

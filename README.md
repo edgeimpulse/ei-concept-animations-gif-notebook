@@ -75,47 +75,45 @@ python python/animation_pipeline.py --preset ml_learning_blocks_individual
 
 | Preset | Preview |
 |---|---|
-| `dsp_sine_shift` | <img src="img/dsp_sine_shift.gif" width="320" /> |
-| `dsp_processing_blocks` | <img src="img/dsp_processing_blocks.gif" width="320" /> |
-| `nn_sigmoid_shift` | <img src="img/nn_sigmoid_shift.gif" width="320" /> |
-| `ml_learning_blocks` | <img src="img/ml_learning_blocks.gif" width="320" /> |
-| `sine_bead` | <img src="img/sine_bead.gif" width="320" /> |
-| `gapminder_full` | <img src="img/gapminder_full.gif" width="320" /> |
+| `dsp_sine_shift` | ![dsp_sine_shift](./img/dsp_sine_shift.gif) |
+| `dsp_processing_blocks` | ![dsp_processing_blocks](./img/dsp_processing_blocks.gif) |
+| `nn_sigmoid_shift` | ![nn_sigmoid_shift](./img/nn_sigmoid_shift.gif) |
+| `ml_learning_blocks` | ![ml_learning_blocks](./img/ml_learning_blocks.gif) |
+| `sine_bead` | ![sine_bead](./img/sine_bead.gif) |
+| `gapminder_full` | ![gapminder_full](./img/gapminder_full.gif) |
 
-## Individual Block Previews + Concept Accuracy
-
-Accuracy values below are current estimated concept-alignment scores based on visual faithfulness to the intended block behavior.
+## Individual Block Previews
 
 ### DSP Processing Blocks
 
-| Block | Preview | Concept Accuracy |
-|---|---|---:|
-| Raw Data | <img src="img/dsp_block_raw_data.gif" width="240" /> | 97% |
-| Flatten | <img src="img/dsp_block_flatten.gif" width="240" /> | 92% |
-| Image | <img src="img/dsp_block_image.gif" width="240" /> | 88% |
-| Spectral features | <img src="img/dsp_block_spectral_features.gif" width="240" /> | 95% |
-| Spectrogram | <img src="img/dsp_block_spectrogram.gif" width="240" /> | 95% |
-| Audio MFE | <img src="img/dsp_block_audio_mfe.gif" width="240" /> | 94% |
-| Audio MFCC | <img src="img/dsp_block_audio_mfcc.gif" width="240" /> | 93% |
-| Audio Syntiant | <img src="img/dsp_block_audio_syntiant.gif" width="240" /> | 86% |
-| IMU Syntiant | <img src="img/dsp_block_imu_syntiant.gif" width="240" /> | 90% |
-| HR/HRV features | <img src="img/dsp_block_hr_hrv_features.gif" width="240" /> | 89% |
+| Block | Preview |
+|---|---|
+| Raw Data | ![dsp_block_raw_data](./img/dsp_block_raw_data.gif) |
+| Flatten | ![dsp_block_flatten](./img/dsp_block_flatten.gif) |
+| Image | ![dsp_block_image](./img/dsp_block_image.gif) |
+| Spectral features | ![dsp_block_spectral_features](./img/dsp_block_spectral_features.gif) |
+| Spectrogram | ![dsp_block_spectrogram](./img/dsp_block_spectrogram.gif) |
+| Audio MFE | ![dsp_block_audio_mfe](./img/dsp_block_audio_mfe.gif) |
+| Audio MFCC | ![dsp_block_audio_mfcc](./img/dsp_block_audio_mfcc.gif) |
+| Audio Syntiant | ![dsp_block_audio_syntiant](./img/dsp_block_audio_syntiant.gif) |
+| IMU Syntiant | ![dsp_block_imu_syntiant](./img/dsp_block_imu_syntiant.gif) |
+| HR/HRV features | ![dsp_block_hr_hrv_features](./img/dsp_block_hr_hrv_features.gif) |
 
 ### ML Learning Blocks
 
-| Block | Preview | Concept Accuracy |
-|---|---|---:|
-| Classification (Keras) | <img src="img/ml_block_classification_keras.gif" width="240" /> | 95% |
-| Regression (Keras) | <img src="img/ml_block_regression_keras.gif" width="240" /> | 95% |
-| Anomaly Detection (K-means) | <img src="img/ml_block_anomaly_detection_k_means.gif" width="240" /> | 97% |
-| Anomaly Detection (GMM) | <img src="img/ml_block_anomaly_detection_gmm.gif" width="240" /> | 97% |
-| Visual anomaly detection (FOMO-AD) | <img src="img/ml_block_visual_anomaly_detection_fomo_ad.gif" width="240" /> | 90% |
-| Image Classification (Transfer Learning) | <img src="img/ml_block_image_classification_transfer_learning.gif" width="240" /> | 92% |
-| Keyword Spotting (Transfer Learning) | <img src="img/ml_block_keyword_spotting_transfer_learning.gif" width="240" /> | 91% |
-| Object Detection (MobileNetV2 SSD FPN) | <img src="img/ml_block_object_detection_mobilenetv2_ssd_fpn.gif" width="240" /> | 93% |
-| Object Detection (FOMO) | <img src="img/ml_block_object_detection_fomo.gif" width="240" /> | 92% |
-| Classical ML | <img src="img/ml_block_classical_ml.gif" width="240" /> | 88% |
-| Custom block (PyTorch/Keras/scikit-learn) | <img src="img/ml_block_custom_block_pytorch_keras_scikit_learn.gif" width="240" /> | 85% |
+| Block | Preview |
+|---|---|
+| Classification (Keras) | ![ml_block_classification_keras](./img/ml_block_classification_keras.gif) |
+| Regression (Keras) | ![ml_block_regression_keras](./img/ml_block_regression_keras.gif) |
+| Anomaly Detection (K-means) | ![ml_block_anomaly_detection_k_means](./img/ml_block_anomaly_detection_k_means.gif) |
+| Anomaly Detection (GMM) | ![ml_block_anomaly_detection_gmm](./img/ml_block_anomaly_detection_gmm.gif) |
+| Visual anomaly detection (FOMO-AD) | ![ml_block_visual_anomaly_detection_fomo_ad](./img/ml_block_visual_anomaly_detection_fomo_ad.gif) |
+| Image Classification (Transfer Learning) | ![ml_block_image_classification_transfer_learning](./img/ml_block_image_classification_transfer_learning.gif) |
+| Keyword Spotting (Transfer Learning) | ![ml_block_keyword_spotting_transfer_learning](./img/ml_block_keyword_spotting_transfer_learning.gif) |
+| Object Detection (MobileNetV2 SSD FPN) | ![ml_block_object_detection_mobilenetv2_ssd_fpn](./img/ml_block_object_detection_mobilenetv2_ssd_fpn.gif) |
+| Object Detection (FOMO) | ![ml_block_object_detection_fomo](./img/ml_block_object_detection_fomo.gif) |
+| Classical ML | ![ml_block_classical_ml](./img/ml_block_classical_ml.gif) |
+| Custom block (PyTorch/Keras/scikit-learn) | ![ml_block_custom_block_pytorch_keras_scikit_learn](./img/ml_block_custom_block_pytorch_keras_scikit_learn.gif) |
 
 ## Running the Notebooks
 
