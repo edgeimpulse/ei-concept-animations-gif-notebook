@@ -21,6 +21,9 @@ DEFAULT_STYLE_URL = (
     "https://github.com/aeturrell/coding-for-economists/raw/main/plot_style.txt"
 )
 
+# Global playback control: 2.0 means animations run at half speed.
+SLOWDOWN_FACTOR = 2.0
+
 PRESET_NAMES: tuple[str, ...] = (
     "dsp_sine_shift",
     "dsp_processing_blocks",
@@ -98,6 +101,14 @@ def maybe_optimize_gif(gif_path: Path, optimize: bool = True) -> None:
         return
 
 
+def _slow_duration_ms(duration_ms: int | float) -> int:
+    return max(1, int(round(duration_ms * SLOWDOWN_FACTOR)))
+
+
+def _slow_fps(fps: int | float) -> float:
+    return max(0.1, float(fps) / SLOWDOWN_FACTOR)
+
+
 @gif.frame
 def _sine_bead_frame(step: int, total_steps: int, dpi: int = 140) -> None:
     plt.close("all")
@@ -127,7 +138,7 @@ def render_sine_bead(
     frames.extend(
         [_sine_bead_frame(frame_count - 1, frame_count) for _ in range(max(0, hold_last))]
     )
-    gif.save(frames, str(output_path), duration=duration_ms)
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
     maybe_optimize_gif(output_path, optimize=optimize)
     return output_path
 
@@ -160,7 +171,7 @@ def render_nn_sigmoid_shift(
     frames.extend(
         [_nn_sigmoid_frame(frame_count - 1, frame_count) for _ in range(max(0, hold_last))]
     )
-    gif.save(frames, str(output_path), duration=duration_ms)
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
     maybe_optimize_gif(output_path, optimize=optimize)
     return output_path
 
@@ -555,7 +566,7 @@ def render_block_catalog_animation(
         ]
     )
 
-    gif.save(frames, str(output_path), duration=duration_ms)
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
     maybe_optimize_gif(output_path, optimize=optimize)
     return output_path
 
@@ -671,7 +682,7 @@ def render_single_block_animation(
         ]
     )
 
-    gif.save(frames, str(output_path), duration=duration_ms)
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
     maybe_optimize_gif(output_path, optimize=optimize)
     return output_path
 
@@ -760,7 +771,7 @@ def render_dsp_sine_shift(
         _save_dsp_sine_frame(frame_path, step=step, total_steps=frame_count)
         frame_paths.append(frame_path)
 
-    frame_duration_ms = 1000 / max(1, fps)
+    frame_duration_ms = 1000 / _slow_fps(max(1, fps))
     with imageio.get_writer(str(output_path), mode="I", duration=frame_duration_ms) as writer:
         for frame_path in frame_paths:
             writer.append_data(imageio.imread(frame_path))
@@ -856,7 +867,7 @@ def render_gapminder_full(
         ]
     )
 
-    gif.save(frames, str(output_path), duration=duration_ms)
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
     maybe_optimize_gif(output_path, optimize=optimize)
     return output_path
 
