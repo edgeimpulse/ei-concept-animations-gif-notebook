@@ -1,0 +1,18 @@
+#install with pip install -r requirements.txt /opt/homebrew/bin/python3 -m pip install --upgrade pip
+# /opt/homebrew/bin/python3 -m pip install matplotlib numpy pandas plotly imageio gif pygifsicle
+# Install with: python -m pip install -r python/requirements.txt
+matplotlib>=3.7
+numpy>=1.24
+pandas>=2.0
+plotly>=5.18
+imageio>=2.31
+gif>=23.3.0
+pygifsicle>=1.1.0
+
+# Kept for compatibility with legacy notebook exports
+python-dotenv==0.19.2
+requests==2.31.0
+
+# Dev/test
+pytest>=8.0
+
