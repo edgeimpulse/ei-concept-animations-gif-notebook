@@ -197,12 +197,9 @@ def _block_catalog_frame(
     list_axis.axis("off")
     list_axis.set_facecolor("#f8fafc")
 
-    list_axis.text(
-        0.03, 0.965, title, fontsize=15, fontweight="bold", va="top", color="#0f172a"
-    )
-    list_axis.text(0.03, 0.905, subtitle, fontsize=10.5, va="top", color="#334155")
+    fig.suptitle(title, x=0.5, y=0.985, ha="center", fontsize=16, fontweight="bold", color="#0f172a")
 
-    start_y = 0.84
+    start_y = 0.92
     row_gap = 0.062
     for index, block_name in enumerate(blocks):
         row_y = start_y - (index * row_gap)
@@ -228,7 +225,7 @@ def _block_catalog_frame(
         _draw_ml_block_concept(concept_axis, block_name, frame_seed=active_index)
 
     list_axis.text(0.03, 0.03, footer, fontsize=8.7, color="#64748b")
-    fig.subplots_adjust(left=0.03, right=0.99, top=0.96, bottom=0.07, wspace=0.06)
+    fig.subplots_adjust(left=0.03, right=0.99, top=0.90, bottom=0.07, wspace=0.06)
 
 
 def _style_concept_axis(axis: plt.Axes, title: str, xlabel: str = "", ylabel: str = "") -> None:
@@ -633,20 +630,16 @@ def _single_block_concept_frame(
 
     if catalog_type == "dsp":
         title = f"DSP Processing Block: {block_name}"
-        subtitle = "Feature extraction concept illustration"
         footer = "Edge Impulse processing blocks"
         _draw_dsp_block_concept(concept_axis, block_name, frame_seed=step)
     else:
         title = f"ML Learning Block: {block_name}"
-        subtitle = "Model-training concept illustration"
         footer = "Edge Impulse learning blocks"
         _draw_ml_block_concept(concept_axis, block_name, frame_seed=step)
 
-    fig.suptitle(title, x=0.02, y=0.99, ha="left", fontsize=14, color="#0f172a")
-    fig.text(0.02, 0.94, subtitle, ha="left", fontsize=9.8, color="#334155")
+    fig.suptitle(title, x=0.5, y=0.985, ha="center", fontsize=14, fontweight="bold", color="#0f172a")
     fig.text(0.02, 0.02, footer, ha="left", fontsize=8.8, color="#64748b")
-    fig.text(0.98, 0.02, f"Frame {step + 1}/{total_steps}", ha="right", fontsize=8.8, color="#64748b")
-    fig.subplots_adjust(left=0.08, right=0.98, top=0.84, bottom=0.13)
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.88, bottom=0.13)
 
 
 def render_single_block_animation(
