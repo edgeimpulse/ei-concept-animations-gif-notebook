@@ -23,14 +23,26 @@ DEFAULT_STYLE_URL = (
 
 # Global playback control: 2.0 means animations run at half speed.
 SLOWDOWN_FACTOR = 2.0
+CLASSIFICATION_BOUNDARY_SLOPE = -0.65
+CLASSIFICATION_BOUNDARY_INTERCEPT = 0.2
 
 PRESET_NAMES: tuple[str, ...] = (
     "dsp_sine_shift",
     "dsp_processing_blocks",
     "dsp_processing_blocks_individual",
     "nn_sigmoid_shift",
+    "nn_training_layers",
+    "nn_inference_layers",
+    "nn_training_vs_on_device_inference",
+    "nn_single_neuron",
+    "nn_architecture_layers",
+    "nn_deep_network",
+    "nn_backpropagation_learning",
+    "nn_playground_classification",
+    "nn_playground_regression",
     "ml_learning_blocks",
     "ml_learning_blocks_individual",
+    "embedded_quantization_8bit_vs_float32",
     "sine_bead",
     "gapminder_full",
 )
@@ -39,7 +51,17 @@ DEFAULT_ALL_PRESETS: tuple[str, ...] = (
     "dsp_sine_shift",
     "dsp_processing_blocks",
     "nn_sigmoid_shift",
+    "nn_training_layers",
+    "nn_inference_layers",
+    "nn_training_vs_on_device_inference",
+    "nn_single_neuron",
+    "nn_architecture_layers",
+    "nn_deep_network",
+    "nn_backpropagation_learning",
+    "nn_playground_classification",
+    "nn_playground_regression",
     "ml_learning_blocks",
+    "embedded_quantization_8bit_vs_float32",
     "sine_bead",
     "gapminder_full",
 )
@@ -176,6 +198,1100 @@ def render_nn_sigmoid_shift(
     return output_path
 
 
+def _network_node_positions(layer_sizes: Sequence[int]) -> list[list[tuple[float, float]]]:
+    x_positions = np.linspace(0.12, 0.88, len(layer_sizes))
+    node_positions: list[list[tuple[float, float]]] = []
+    for x_pos, layer_size in zip(x_positions, layer_sizes):
+        if layer_size <= 1:
+            y_positions = np.array([0.50])
+        else:
+            y_positions = np.linspace(0.18, 0.82, layer_size)
+        node_positions.append([(float(x_pos), float(y_pos)) for y_pos in y_positions])
+    return node_positions
+
+
+def _draw_dense_network(
+    axis: plt.Axes,
+    layer_sizes: Sequence[int],
+    active_layer: int | None,
+    edge_alpha: float,
+    show_backprop: bool,
+) -> None:
+    axis.set_xlim(0, 1)
+    axis.set_ylim(0, 1)
+    axis.axis("off")
+
+    positions = _network_node_positions(layer_sizes)
+
+    for layer_index in range(len(layer_sizes) - 1):
+        for x0, y0 in positions[layer_index]:
+            for x1, y1 in positions[layer_index + 1]:
+                axis.plot(
+                    [x0, x1],
+                    [y0, y1],
+                    color="#94a3b8",
+                    lw=0.85,
+                    alpha=edge_alpha,
+                    transform=axis.transAxes,
+                )
+
+    for layer_index, layer_nodes in enumerate(positions):
+        node_color = "#64748b"
+        if layer_index == 0:
+            node_color = "#2563eb"
+        if layer_index == len(positions) - 1:
+            node_color = "#16a34a"
+        if active_layer is not None and layer_index == active_layer:
+            node_color = "#f59e0b"
+
+        for x_pos, y_pos in layer_nodes:
+            axis.add_patch(
+                Circle(
+                    (x_pos, y_pos),
+                    radius=0.024,
+                    transform=axis.transAxes,
+                    fc=node_color,
+                    ec="#0f172a",
+                    lw=0.7,
+                    alpha=0.96,
+                )
+            )
+
+        axis.text(
+            layer_nodes[0][0],
+            0.86,
+            f"L{layer_index + 1}",
+            ha="center",
+            fontsize=8,
+            color="#334155",
+            transform=axis.transAxes,
+        )
+
+    if show_backprop:
+        for layer_index in range(len(positions) - 1, 0, -1):
+            y_pos = 0.07 + 0.02 * (layer_index % 2)
+            axis.annotate(
+                "",
+                xy=(positions[layer_index - 1][0][0], y_pos),
+                xytext=(positions[layer_index][0][0], y_pos),
+                arrowprops={"arrowstyle": "->", "lw": 1.4, "color": "#ef4444", "alpha": 0.88},
+                xycoords=axis.transAxes,
+            )
+
+
+@gif.frame
+def _nn_training_layers_frame(step: int, total_steps: int, dpi: int = 160) -> None:
+    plt.close("all")
+    fig = plt.figure(figsize=(6.6, 4.4), dpi=dpi)
+    grid = fig.add_gridspec(2, 1, height_ratios=[0.70, 0.30], hspace=0.22)
+    network_axis = fig.add_subplot(grid[0, 0])
+    loss_axis = fig.add_subplot(grid[1, 0])
+
+    progress = step / max(1, total_steps - 1)
+    active_layer = min(3, int(np.floor(progress * 4)))
+    edge_alpha = 0.14 + 0.34 * (0.5 + 0.5 * np.sin(2 * np.pi * progress * 2.2))
+    epoch = int(np.interp(progress, [0, 1], [1, 40]))
+
+    _draw_dense_network(
+        network_axis,
+        layer_sizes=(4, 6, 5, 3),
+        active_layer=active_layer,
+        edge_alpha=edge_alpha,
+        show_backprop=True,
+    )
+    network_axis.set_title(
+        f"Training epoch {epoch}: creating and tuning layers",
+        fontsize=10,
+        color="#0f172a",
+        pad=6,
+    )
+
+    epochs = np.arange(1, 41)
+    loss = 1.45 * np.exp(-epochs / 12.5) + 0.08
+    shown = max(2, int(np.ceil(progress * len(epochs))))
+    loss_axis.plot(epochs, loss, color="#cbd5e1", lw=1.5)
+    loss_axis.plot(epochs[:shown], loss[:shown], color="#2563eb", lw=2.2)
+    loss_axis.scatter([epochs[shown - 1]], [loss[shown - 1]], color="#1d4ed8", s=24)
+    loss_axis.set_xlim(1, 40)
+    loss_axis.set_ylim(0, 1.6)
+    loss_axis.set_title("Loss during training", fontsize=10, color="#0f172a")
+    loss_axis.set_xlabel("Epoch", fontsize=9)
+    loss_axis.set_ylabel("Loss", fontsize=9)
+    loss_axis.grid(alpha=0.25)
+
+    fig.suptitle("NN Training: layer creation + weight updates", y=0.98, fontsize=13, color="#0f172a")
+
+
+def render_nn_training_layers(
+    output_path: Path,
+    frame_count: int = 24,
+    hold_last: int = 6,
+    duration_ms: int = 95,
+    optimize: bool = True,
+) -> Path:
+    frames = [_nn_training_layers_frame(step, frame_count) for step in range(frame_count)]
+    frames.extend(
+        [_nn_training_layers_frame(frame_count - 1, frame_count) for _ in range(max(0, hold_last))]
+    )
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
+    maybe_optimize_gif(output_path, optimize=optimize)
+    return output_path
+
+
+@gif.frame
+def _nn_inference_layers_frame(step: int, total_steps: int, dpi: int = 160) -> None:
+    plt.close("all")
+    fig = plt.figure(figsize=(6.8, 4.4), dpi=dpi)
+    grid = fig.add_gridspec(1, 2, width_ratios=[0.68, 0.32], wspace=0.20)
+    network_axis = fig.add_subplot(grid[0, 0])
+    output_axis = fig.add_subplot(grid[0, 1])
+
+    progress = step / max(1, total_steps - 1)
+    active_layer = min(3, int(np.floor(progress * 4)))
+
+    _draw_dense_network(
+        network_axis,
+        layer_sizes=(4, 6, 5, 3),
+        active_layer=active_layer,
+        edge_alpha=0.18,
+        show_backprop=False,
+    )
+    network_axis.text(
+        0.02,
+        0.97,
+        f"Inference sample #{step + 1}: forward pass only",
+        ha="left",
+        va="top",
+        fontsize=10,
+        color="#0f172a",
+        transform=network_axis.transAxes,
+    )
+
+    logits = np.array(
+        [
+            1.2 + 0.8 * np.sin(0.33 * step),
+            0.7 + 0.9 * np.cos(0.22 * step),
+            0.5 + 0.6 * np.sin(0.41 * step + 0.6),
+        ]
+    )
+    shifted = logits - logits.max()
+    probs = np.exp(shifted) / np.exp(shifted).sum()
+    labels = ["class A", "class B", "class C"]
+    top_index = int(np.argmax(probs))
+    colors = ["#94a3b8", "#94a3b8", "#94a3b8"]
+    colors[top_index] = "#16a34a"
+
+    output_axis.barh(labels, probs, color=colors)
+    output_axis.set_xlim(0, 1)
+    output_axis.set_xlabel("Probability", fontsize=9)
+    output_axis.set_title("Output", fontsize=10, color="#0f172a")
+    output_axis.grid(alpha=0.25, axis="x")
+    output_axis.text(
+        0.03,
+        0.03,
+        f"Prediction: {labels[top_index]}",
+        transform=output_axis.transAxes,
+        fontsize=9,
+        color="#166534",
+    )
+
+    fig.suptitle("NN Inference: fixed layers + forward execution", y=0.98, fontsize=13, color="#0f172a")
+
+
+def render_nn_inference_layers(
+    output_path: Path,
+    frame_count: int = 24,
+    hold_last: int = 6,
+    duration_ms: int = 95,
+    optimize: bool = True,
+) -> Path:
+    frames = [_nn_inference_layers_frame(step, frame_count) for step in range(frame_count)]
+    frames.extend(
+        [_nn_inference_layers_frame(frame_count - 1, frame_count) for _ in range(max(0, hold_last))]
+    )
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
+    maybe_optimize_gif(output_path, optimize=optimize)
+    return output_path
+
+
+@gif.frame
+def _nn_training_vs_on_device_inference_frame(step: int, total_steps: int, dpi: int = 160) -> None:
+    plt.close("all")
+    fig = plt.figure(figsize=(8.0, 4.4), dpi=dpi)
+    grid = fig.add_gridspec(1, 2, width_ratios=[0.5, 0.5], wspace=0.08)
+    train_axis = fig.add_subplot(grid[0, 0])
+    infer_axis = fig.add_subplot(grid[0, 1])
+
+    progress = step / max(1, total_steps - 1)
+    active_layer = min(3, int(np.floor(progress * 4)))
+    epoch = int(np.interp(progress, [0, 1], [1, 50]))
+
+    _draw_dense_network(
+        train_axis,
+        layer_sizes=(4, 7, 5, 3),
+        active_layer=active_layer,
+        edge_alpha=0.16 + 0.28 * (0.5 + 0.5 * np.sin(step * 0.45)),
+        show_backprop=True,
+    )
+    train_axis.text(0.02, 0.98, "Cloud training", va="top", fontsize=11, color="#1e3a8a", transform=train_axis.transAxes)
+    train_axis.text(0.02, 0.03, f"Epoch {epoch} | float32 optimization", fontsize=8.8, color="#334155", transform=train_axis.transAxes)
+
+    _draw_dense_network(
+        infer_axis,
+        layer_sizes=(4, 5, 4, 3),
+        active_layer=active_layer,
+        edge_alpha=0.18,
+        show_backprop=False,
+    )
+    infer_axis.add_patch(
+        Rectangle(
+            (0.28, 0.02),
+            0.44,
+            0.09,
+            transform=infer_axis.transAxes,
+            fc="#e2e8f0",
+            ec="#64748b",
+            lw=1.1,
+        )
+    )
+    infer_axis.text(0.50, 0.065, "On-device MCU", ha="center", va="center", fontsize=8.5, color="#334155", transform=infer_axis.transAxes)
+    infer_axis.text(0.02, 0.98, "On-device inference", va="top", fontsize=11, color="#166534", transform=infer_axis.transAxes)
+    infer_axis.text(0.02, 0.03, "Frozen weights | low latency", fontsize=8.8, color="#334155", transform=infer_axis.transAxes)
+
+    fig.suptitle("Training vs on-device inference", y=0.98, fontsize=13, color="#0f172a")
+
+
+def render_nn_training_vs_on_device_inference(
+    output_path: Path,
+    frame_count: int = 24,
+    hold_last: int = 6,
+    duration_ms: int = 95,
+    optimize: bool = True,
+) -> Path:
+    frames = [
+        _nn_training_vs_on_device_inference_frame(step, frame_count)
+        for step in range(frame_count)
+    ]
+    frames.extend(
+        [
+            _nn_training_vs_on_device_inference_frame(frame_count - 1, frame_count)
+            for _ in range(max(0, hold_last))
+        ]
+    )
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
+    maybe_optimize_gif(output_path, optimize=optimize)
+    return output_path
+
+
+@gif.frame
+def _embedded_quantization_8bit_vs_float32_frame(
+    step: int, total_steps: int, dpi: int = 160
+) -> None:
+    plt.close("all")
+    fig = plt.figure(figsize=(6.8, 4.4), dpi=dpi)
+    grid = fig.add_gridspec(2, 1, height_ratios=[0.68, 0.32], hspace=0.22)
+    weights_axis = fig.add_subplot(grid[0, 0])
+    metrics_axis = fig.add_subplot(grid[1, 0])
+
+    base_weights = np.array([-0.82, -0.55, -0.22, 0.03, 0.21, 0.43, 0.66, 0.87])
+    jitter = 0.03 * np.sin(np.linspace(0, 2 * np.pi, base_weights.size) + 0.38 * step)
+    float_weights = np.clip(base_weights + jitter, -1.0, 1.0)
+    int8_weights = np.round(float_weights * 127).astype(np.int8)
+    dequant_weights = int8_weights.astype(np.float32) / 127.0
+
+    x_values = np.arange(base_weights.size)
+    width = 0.38
+    weights_axis.bar(
+        x_values - width / 2,
+        float_weights,
+        width,
+        color="#0ea5e9",
+        alpha=0.9,
+        label="float32",
+    )
+    weights_axis.bar(
+        x_values + width / 2,
+        dequant_weights,
+        width,
+        color="#f59e0b",
+        alpha=0.85,
+        label="int8 (dequantized)",
+    )
+    weights_axis.set_ylim(-1.05, 1.05)
+    weights_axis.set_xticks(x_values)
+    weights_axis.set_xlabel("Weight index", fontsize=9)
+    weights_axis.set_ylabel("Value", fontsize=9)
+    weights_axis.grid(alpha=0.25)
+    weights_axis.legend(loc="lower right", fontsize=8, frameon=False)
+    weights_axis.set_title("Quantized weights preserve the shape of float32 weights", fontsize=10, color="#0f172a")
+
+    float_model_size = 4.0
+    int8_model_size = 1.0
+    float_latency = 1.0
+    int8_latency = 0.62 + 0.05 * np.sin(0.5 * step)
+    labels = ["Model size", "Inference latency"]
+    y_values = np.arange(len(labels))
+    metric_height = 0.34
+
+    metrics_axis.barh(y_values - metric_height / 2, [float_model_size, float_latency], metric_height, color="#0ea5e9", label="float32")
+    metrics_axis.barh(y_values + metric_height / 2, [int8_model_size, int8_latency], metric_height, color="#f59e0b", label="int8")
+    metrics_axis.set_xlim(0, 4.4)
+    metrics_axis.set_yticks(y_values)
+    metrics_axis.set_yticklabels(labels)
+    metrics_axis.grid(alpha=0.25, axis="x")
+    metrics_axis.set_xlabel("Relative cost", fontsize=9)
+    metrics_axis.legend(loc="lower right", fontsize=8, frameon=False)
+
+    reduction_percent = int(round((1.0 - int8_model_size / float_model_size) * 100))
+    metrics_axis.text(
+        0.02,
+        0.05,
+        f"Memory reduction: {reduction_percent}% (8-bit vs float32)",
+        transform=metrics_axis.transAxes,
+        fontsize=8.8,
+        color="#334155",
+    )
+
+    fig.suptitle("Embedded: quantization (8-bit vs float32)", y=0.98, fontsize=13, color="#0f172a")
+
+
+def render_embedded_quantization_8bit_vs_float32(
+    output_path: Path,
+    frame_count: int = 22,
+    hold_last: int = 6,
+    duration_ms: int = 95,
+    optimize: bool = True,
+) -> Path:
+    frames = [
+        _embedded_quantization_8bit_vs_float32_frame(step, frame_count)
+        for step in range(frame_count)
+    ]
+    frames.extend(
+        [
+            _embedded_quantization_8bit_vs_float32_frame(frame_count - 1, frame_count)
+            for _ in range(max(0, hold_last))
+        ]
+    )
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
+    maybe_optimize_gif(output_path, optimize=optimize)
+    return output_path
+
+
+@gif.frame
+def _nn_single_neuron_frame(step: int, total_steps: int, dpi: int = 160) -> None:
+    plt.close("all")
+    fig = plt.figure(figsize=(6.5, 6.5), dpi=dpi)
+    ax = fig.add_subplot(111)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect("equal")
+    ax.axis("off")
+
+    progress = step / max(1, total_steps - 1)
+
+    # Static geometry
+    inputs = [(0.12, 0.72), (0.12, 0.50), (0.12, 0.28)]
+    input_labels = ["x₁", "x₂", "x₃"]
+    neuron_radius = 0.08
+    neuron_x, neuron_y = 0.50, 0.50
+
+    # Animated values (only these change)
+    w1 = 0.80 + 0.28 * np.sin(2.0 * np.pi * progress)
+    w2 = -0.50 + 0.22 * np.cos(2.4 * np.pi * progress + 0.35)
+    w3 = 0.30 + 0.18 * np.sin(1.8 * np.pi * progress + 1.20)
+    bias = 0.10 + 0.12 * np.cos(2.2 * np.pi * progress + 0.80)
+
+    learning_rate = 0.030 + 0.012 * (0.5 + 0.5 * np.sin(2.0 * np.pi * progress * 0.9))
+    regularization_rate = 0.002 + 0.018 * (0.5 + 0.5 * np.cos(2.0 * np.pi * progress * 0.8 + 0.50))
+    epochs = int(np.interp(progress, [0.0, 1.0], [1, 50]))
+    activation_options = ("Tanh", "ReLU", "Sigmoid")
+    activation_name = activation_options[min(len(activation_options) - 1, int(progress * len(activation_options)))]
+
+    # Draw static input nodes and labels
+    for (x_pos, y_pos), label in zip(inputs, input_labels):
+        ax.add_patch(
+            Circle((x_pos, y_pos), neuron_radius * 0.40, fc="#2563eb", ec="#0f172a", lw=0.8, alpha=0.96, transform=ax.transAxes)
+        )
+        ax.text(x_pos - 0.06, y_pos, label, ha="right", va="center", fontsize=11, color="#0f172a", transform=ax.transAxes)
+
+    # Draw static weighted connections, labels animate numerically
+    current_weights = (w1, w2, w3)
+    for (x_pos, y_pos), weight_value in zip(inputs, current_weights):
+        ax.plot([x_pos, neuron_x], [y_pos, neuron_y], color="#64748b", lw=1.9, alpha=0.92, transform=ax.transAxes)
+        mid_x = (x_pos + neuron_x) / 2
+        mid_y = (y_pos + neuron_y) / 2 + 0.03
+        weight_color = "#16a34a" if weight_value >= 0 else "#dc2626"
+        ax.text(
+            mid_x,
+            mid_y,
+            f"w={weight_value:+.2f}",
+            ha="center",
+            fontsize=8,
+            color=weight_color,
+            transform=ax.transAxes,
+            bbox=dict(boxstyle="round,pad=0.18", fc="#ffffff", ec="#cbd5e1", alpha=0.9),
+        )
+
+    # Draw static neuron body
+    ax.add_patch(
+        Circle((neuron_x, neuron_y), neuron_radius, fc="#f59e0b", ec="#0f172a", lw=1.4, alpha=0.96, transform=ax.transAxes)
+    )
+    ax.text(neuron_x, neuron_y + 0.02, "Σ", ha="center", va="center", fontsize=20, color="#ffffff", weight="bold", transform=ax.transAxes)
+    ax.text(neuron_x, neuron_y - 0.03, f"+b={bias:+.2f}", ha="center", va="center", fontsize=7.8, color="#ffffff", transform=ax.transAxes)
+
+    # Draw static activation block and output arrow
+    ax.annotate(
+        "",
+        xy=(0.72, neuron_y),
+        xytext=(neuron_x + 0.09, neuron_y),
+        arrowprops={"arrowstyle": "->", "lw": 2.0, "color": "#64748b", "alpha": 0.9},
+        xycoords=ax.transAxes,
+    )
+    ax.add_patch(Rectangle((0.72, neuron_y - 0.05), 0.12, 0.10, fc="#8b5cf6", ec="#0f172a", lw=1.2, alpha=0.95, transform=ax.transAxes))
+    ax.text(0.78, neuron_y, "f(x)", ha="center", va="center", fontsize=10, color="#ffffff", weight="bold", transform=ax.transAxes)
+    ax.text(0.78, neuron_y - 0.08, activation_name, ha="center", va="top", fontsize=7, color="#334155", transform=ax.transAxes)
+
+    ax.annotate(
+        "",
+        xy=(0.92, neuron_y),
+        xytext=(0.85, neuron_y),
+        arrowprops={"arrowstyle": "->", "lw": 2.0, "color": "#64748b", "alpha": 0.9},
+        xycoords=ax.transAxes,
+    )
+    ax.text(0.94, neuron_y, "y", ha="left", va="center", fontsize=11, color="#0f172a", transform=ax.transAxes)
+
+    # Hyperparameter panel (values animate)
+    panel_x, panel_y, panel_w, panel_h = 0.64, 0.17, 0.31, 0.24
+    ax.add_patch(Rectangle((panel_x, panel_y), panel_w, panel_h, fc="#f8fafc", ec="#cbd5e1", lw=1.1, transform=ax.transAxes))
+    ax.text(panel_x + 0.02, panel_y + panel_h - 0.04, "Hyperparameters", fontsize=8.6, color="#0f172a", weight="bold", transform=ax.transAxes)
+    ax.text(panel_x + 0.02, panel_y + panel_h - 0.085, f"Epoch: {epochs:02d}", fontsize=8, color="#334155", transform=ax.transAxes)
+    ax.text(panel_x + 0.02, panel_y + panel_h - 0.125, f"Learning rate: {learning_rate:.3f}", fontsize=8, color="#334155", transform=ax.transAxes)
+    ax.text(panel_x + 0.02, panel_y + panel_h - 0.165, f"Reg rate: {regularization_rate:.3f}", fontsize=8, color="#334155", transform=ax.transAxes)
+    ax.text(panel_x + 0.02, panel_y + panel_h - 0.205, f"Activation: {activation_name}", fontsize=8, color="#334155", transform=ax.transAxes)
+
+    # Title and equation stay visible in all frames
+    ax.text(0.50, 0.95, "Single Neuron: weights + hyperparameters update", ha="center", va="top", fontsize=12, color="#0f172a", weight="bold", transform=ax.transAxes)
+    ax.text(
+        0.50,
+        0.11,
+        f"y = f({w1:+.2f}x₁ {w2:+.2f}x₂ {w3:+.2f}x₃ {bias:+.2f})",
+        ha="center",
+        va="center",
+        fontsize=9.8,
+        color="#334155",
+        style="italic",
+        transform=ax.transAxes,
+        bbox=dict(boxstyle="round,pad=0.45", fc="#f1f5f9", ec="#cbd5e1", alpha=0.95),
+    )
+
+
+def render_nn_single_neuron(
+    output_path: Path,
+    frame_count: int = 28,
+    hold_last: int = 8,
+    duration_ms: int = 100,
+    optimize: bool = True,
+) -> Path:
+    frames = [_nn_single_neuron_frame(step, frame_count) for step in range(frame_count)]
+    frames.extend([_nn_single_neuron_frame(frame_count - 1, frame_count) for _ in range(max(0, hold_last))])
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
+    maybe_optimize_gif(output_path, optimize=optimize)
+    return output_path
+
+
+@gif.frame
+def _nn_architecture_layers_frame(step: int, total_steps: int, dpi: int = 160) -> None:
+    plt.close("all")
+    fig = plt.figure(figsize=(6.5, 6.5), dpi=dpi)
+    ax = fig.add_subplot(111)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect('equal')
+    ax.axis("off")
+
+    progress = step / max(1, total_steps - 1)
+    
+    # Define three layers: input, hidden, output
+    layers = [(0.20, 4, "#2563eb", "Input\nLayer"), 
+              (0.50, 6, "#f59e0b", "Hidden\nLayer"), 
+              (0.80, 3, "#16a34a", "Output\nLayer")]
+    
+    # Flow animation - which layer is currently processing
+    flow_layer = int((progress * 2.5) % 3.5)
+    
+    # Draw connections between layers with flow
+    for layer_idx in range(len(layers) - 1):
+        if progress > 0.2 + layer_idx * 0.25:
+            alpha = min(1.0, (progress - (0.2 + layer_idx * 0.25)) * 3.0)
+            x0, size0, _, _ = layers[layer_idx]
+            x1, size1, _, _ = layers[layer_idx + 1]
+            
+            y_positions_0 = np.linspace(0.25, 0.75, size0)
+            y_positions_1 = np.linspace(0.25, 0.75, size1)
+            
+            # Highlight connections when data flows through
+            is_flowing = (flow_layer == layer_idx and progress > 0.5)
+            conn_color = "#10b981" if is_flowing else "#cbd5e1"
+            conn_lw = 1.2 if is_flowing else 0.7
+            
+            for y0 in y_positions_0:
+                for y1 in y_positions_1:
+                    ax.plot([x0, x1], [y0, y1], color=conn_color, lw=conn_lw, alpha=alpha * 0.5, transform=ax.transAxes)
+    
+    # Draw nodes for each layer with flow highlight
+    for layer_idx, (x_pos, num_nodes, color, label) in enumerate(layers):
+        if progress > layer_idx * 0.25:
+            alpha = min(1.0, (progress - layer_idx * 0.25) * 2.5)
+            y_positions = np.linspace(0.25, 0.75, num_nodes)
+            
+            # Highlight active layer
+            is_active = (flow_layer == layer_idx and progress > 0.5)
+            node_color = "#10b981" if is_active else color
+            
+            for y_pos in y_positions:
+                ax.add_patch(Circle((x_pos, y_pos), 0.028, fc=node_color, ec="#0f172a", 
+                                   lw=0.8, alpha=alpha, transform=ax.transAxes))
+            
+            # Layer label
+            ax.text(x_pos, 0.10, label, ha="center", va="center", fontsize=10, 
+                   color=color, alpha=alpha, weight="bold", transform=ax.transAxes)
+    
+    # Title
+    ax.text(0.50, 0.94, "Neural Network Architecture: Layers", 
+           ha="center", va="top", fontsize=12, color="#0f172a", weight="bold", transform=ax.transAxes)
+    
+    # Description
+    if progress > 0.7:
+        text_alpha = min(1.0, (progress - 0.7) * 2.0)
+        ax.text(0.50, 0.02, "Data flows from input → hidden → output layers", 
+               ha="center", va="bottom", fontsize=9, color="#334155", 
+               style="italic", alpha=text_alpha, transform=ax.transAxes)
+
+
+def render_nn_architecture_layers(
+    output_path: Path,
+    frame_count: int = 26,
+    hold_last: int = 8,
+    duration_ms: int = 100,
+    optimize: bool = True,
+) -> Path:
+    frames = [_nn_architecture_layers_frame(step, frame_count) for step in range(frame_count)]
+    frames.extend([_nn_architecture_layers_frame(frame_count - 1, frame_count) for _ in range(max(0, hold_last))])
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
+    maybe_optimize_gif(output_path, optimize=optimize)
+    return output_path
+
+
+@gif.frame
+def _nn_deep_network_frame(step: int, total_steps: int, dpi: int = 160) -> None:
+    plt.close("all")
+    fig = plt.figure(figsize=(7.5, 7.5), dpi=dpi)
+    ax = fig.add_subplot(111)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect('equal')
+    ax.axis("off")
+
+    progress = step / max(1, total_steps - 1)
+    
+    # Deep network with multiple hidden layers
+    layer_sizes = [5, 8, 10, 8, 6, 3]
+    colors = ["#2563eb", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#16a34a"]
+    labels = ["Input", "Hidden 1", "Hidden 2", "Hidden 3", "Hidden 4", "Output"]
+    
+    positions = _network_node_positions(layer_sizes)
+    
+    # Flow animation - which layer is processing
+    flow_layer = int((progress * 2.5) % len(layer_sizes))
+    
+    # Draw connections with progressive reveal and flow
+    for layer_idx in range(len(layer_sizes) - 1):
+        if progress > 0.15 + layer_idx * 0.12:
+            alpha = min(1.0, (progress - (0.15 + layer_idx * 0.12)) * 5.0)
+            # Highlight connections when flow passes through
+            is_flowing = (flow_layer == layer_idx and progress > 0.6)
+            conn_color = "#10b981" if is_flowing else "#cbd5e1"
+            conn_lw = 0.9 if is_flowing else 0.5
+            for x0, y0 in positions[layer_idx]:
+                for x1, y1 in positions[layer_idx + 1]:
+                    ax.plot([x0, x1], [y0, y1], color=conn_color, lw=conn_lw, 
+                           alpha=alpha * 0.4, transform=ax.transAxes)
+    
+    # Draw nodes with flow highlight
+    for layer_idx, (layer_nodes, color, label) in enumerate(zip(positions, colors, labels)):
+        if progress > layer_idx * 0.12:
+            alpha = min(1.0, (progress - layer_idx * 0.12) * 3.0)
+            # Highlight active layer during flow
+            is_active = (flow_layer == layer_idx and progress > 0.6)
+            node_color = "#10b981" if is_active else color
+            for x_pos, y_pos in layer_nodes:
+                ax.add_patch(Circle((x_pos, y_pos), 0.018, fc=node_color, ec="#0f172a", 
+                                   lw=0.6, alpha=alpha, transform=ax.transAxes))
+            
+            # Layer label
+            ax.text(layer_nodes[0][0], 0.08, label, ha="center", va="center", 
+                   fontsize=8, color="#334155", alpha=alpha, transform=ax.transAxes)
+    
+    # Title
+    ax.text(0.50, 0.96, "Deep Neural Network: Multiple Hidden Layers", 
+           ha="center", va="top", fontsize=12, color="#0f172a", weight="bold", transform=ax.transAxes)
+    
+    # Description with depth info
+    if progress > 0.75:
+        text_alpha = min(1.0, (progress - 0.75) * 3.0)
+        ax.text(0.50, 0.02, f"Deep networks have many layers (6 layers shown, 4 hidden)", 
+               ha="center", va="bottom", fontsize=9, color="#334155", 
+               style="italic", alpha=text_alpha, transform=ax.transAxes)
+
+
+def render_nn_deep_network(
+    output_path: Path,
+    frame_count: int = 30,
+    hold_last: int = 8,
+    duration_ms: int = 95,
+    optimize: bool = True,
+) -> Path:
+    effective_steps = max(2, frame_count)
+    static_step = effective_steps - 1
+    frames = [_nn_deep_network_frame(static_step, effective_steps)]
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
+    maybe_optimize_gif(output_path, optimize=optimize)
+    return output_path
+
+
+@gif.frame
+def _nn_backpropagation_learning_frame(step: int, total_steps: int, dpi: int = 160) -> None:
+    plt.close("all")
+    fig = plt.figure(figsize=(8.0, 8.0), dpi=dpi)
+    grid = fig.add_gridspec(
+        3,
+        2,
+        height_ratios=[0.42, 0.42, 0.16],
+        width_ratios=[0.50, 0.50],
+        hspace=0.15,
+        wspace=0.12,
+    )
+    forward_axis = fig.add_subplot(grid[0, 0])
+    backward_axis = fig.add_subplot(grid[0, 1])
+    combined_axis = fig.add_subplot(grid[1, :])
+    info_axis = fig.add_subplot(grid[2, :])
+
+    progress = step / max(1, total_steps - 1)
+    is_forward_phase = progress < 0.5
+    phase_progress = progress / 0.5 if is_forward_phase else (progress - 0.5) / 0.5
+
+    layer_sizes = [4, 6, 4, 3]
+    positions = _network_node_positions(layer_sizes)
+
+    # === FORWARD PASS (Top Left) ===
+    forward_axis.set_xlim(0, 1)
+    forward_axis.set_ylim(0, 1)
+    forward_axis.set_aspect("equal")
+    forward_axis.axis("off")
+    forward_axis.set_title("Forward Pass: Input → Output", fontsize=10, color="#047857", weight="bold", pad=8)
+
+    for layer_idx in range(len(layer_sizes) - 1):
+        for x0, y0 in positions[layer_idx]:
+            for x1, y1 in positions[layer_idx + 1]:
+                forward_axis.plot([x0, x1], [y0, y1], color="#e5e7eb", lw=0.6, alpha=0.5, transform=forward_axis.transAxes)
+
+    active_forward_layer = min(len(layer_sizes) - 1, int(np.floor(phase_progress * len(layer_sizes)))) if is_forward_phase else len(layer_sizes) - 1
+
+    for layer_idx in range(active_forward_layer):
+        for x0, y0 in positions[layer_idx]:
+            for x1, y1 in positions[layer_idx + 1]:
+                forward_axis.plot([x0, x1], [y0, y1], color="#10b981", lw=1.2, alpha=0.6, transform=forward_axis.transAxes)
+
+    for layer_idx in range(len(layer_sizes)):
+        for x_pos, y_pos in positions[layer_idx]:
+            if layer_idx < active_forward_layer:
+                node_color = "#10b981"
+            elif layer_idx == active_forward_layer and is_forward_phase:
+                node_color = "#34d399"
+            else:
+                node_color = "#d1d5db"
+            forward_axis.add_patch(Circle((x_pos, y_pos), 0.022, fc=node_color, ec="#0f172a", lw=0.7, alpha=0.95, transform=forward_axis.transAxes))
+
+    # === BACKWARD PASS (Top Right) ===
+    backward_axis.set_xlim(0, 1)
+    backward_axis.set_ylim(0, 1)
+    backward_axis.set_aspect("equal")
+    backward_axis.axis("off")
+    backward_axis.set_title("Backpropagation: Output → Input", fontsize=10, color="#dc2626", weight="bold", pad=8)
+
+    for layer_idx in range(len(layer_sizes) - 1):
+        for x0, y0 in positions[layer_idx]:
+            for x1, y1 in positions[layer_idx + 1]:
+                backward_axis.plot([x0, x1], [y0, y1], color="#e5e7eb", lw=0.6, alpha=0.5, transform=backward_axis.transAxes)
+
+    if is_forward_phase:
+        active_back_layer = len(layer_sizes) - 1
+    else:
+        reverse_step = min(len(layer_sizes) - 1, int(np.floor(phase_progress * len(layer_sizes))))
+        active_back_layer = len(layer_sizes) - 1 - reverse_step
+        for layer_idx in range(len(layer_sizes) - 1, max(active_back_layer, 0), -1):
+            for x0, y0 in positions[layer_idx - 1]:
+                for x1, y1 in positions[layer_idx]:
+                    backward_axis.plot([x0, x1], [y0, y1], color="#ef4444", lw=1.2, alpha=0.6, transform=backward_axis.transAxes)
+
+    for layer_idx in range(len(layer_sizes)):
+        for x_pos, y_pos in positions[layer_idx]:
+            if not is_forward_phase and layer_idx > active_back_layer:
+                node_color = "#ef4444"
+            elif not is_forward_phase and layer_idx == active_back_layer:
+                node_color = "#f87171"
+            else:
+                node_color = "#d1d5db"
+            backward_axis.add_patch(Circle((x_pos, y_pos), 0.022, fc=node_color, ec="#0f172a", lw=0.7, alpha=0.95, transform=backward_axis.transAxes))
+
+    # === COMBINED VIEW (Middle) ===
+    combined_axis.set_xlim(0, 1)
+    combined_axis.set_ylim(0, 1)
+    combined_axis.set_aspect("equal")
+    combined_axis.axis("off")
+    combined_axis.set_title("Single Epoch Cycle", fontsize=10, color="#0f172a", weight="bold", pad=8)
+
+    for layer_idx in range(len(layer_sizes) - 1):
+        for x0, y0 in positions[layer_idx]:
+            for x1, y1 in positions[layer_idx + 1]:
+                combined_axis.plot([x0, x1], [y0, y1], color="#cbd5e1", lw=0.7, alpha=0.4, transform=combined_axis.transAxes)
+
+    if is_forward_phase:
+        active_layer = min(len(layer_sizes) - 1, int(np.floor(phase_progress * len(layer_sizes))))
+        for layer_idx in range(len(layer_sizes)):
+            for x_pos, y_pos in positions[layer_idx]:
+                node_color = "#10b981" if layer_idx <= active_layer else "#94a3b8"
+                combined_axis.add_patch(Circle((x_pos, y_pos), 0.020, fc=node_color, ec="#0f172a", lw=0.6, alpha=0.95, transform=combined_axis.transAxes))
+        combined_axis.annotate("", xy=(0.88, 0.50), xytext=(0.12, 0.50), arrowprops={"arrowstyle": "->", "lw": 2.5, "color": "#10b981", "alpha": 0.7}, xycoords=combined_axis.transAxes)
+    else:
+        reverse_step = min(len(layer_sizes) - 1, int(np.floor(phase_progress * len(layer_sizes))))
+        active_back_layer = len(layer_sizes) - 1 - reverse_step
+        for layer_idx in range(len(layer_sizes)):
+            for x_pos, y_pos in positions[layer_idx]:
+                node_color = "#ef4444" if layer_idx >= active_back_layer else "#94a3b8"
+                combined_axis.add_patch(Circle((x_pos, y_pos), 0.020, fc=node_color, ec="#0f172a", lw=0.6, alpha=0.95, transform=combined_axis.transAxes))
+        combined_axis.annotate("", xy=(0.12, 0.50), xytext=(0.88, 0.50), arrowprops={"arrowstyle": "->", "lw": 2.5, "color": "#ef4444", "alpha": 0.7}, xycoords=combined_axis.transAxes)
+
+    # === INFO PANEL (Bottom) ===
+    info_axis.set_xlim(0, 1)
+    info_axis.set_ylim(0, 1)
+    info_axis.axis("off")
+
+    start_loss = 1.42
+    end_loss = 1.12
+    loss = start_loss if is_forward_phase else start_loss - (start_loss - end_loss) * phase_progress
+
+    if is_forward_phase:
+        phase_text = "Epoch 1/1 — Forward pass (prediction)"
+        phase_color = "#047857"
+    else:
+        phase_text = "Epoch 1/1 — Backpropagation (weight update)"
+        phase_color = "#dc2626"
+
+    info_axis.text(
+        0.5,
+        0.62,
+        f"Loss in this epoch: {loss:.3f}",
+        ha="center",
+        va="center",
+        fontsize=10,
+        color="#334155",
+        weight="bold",
+        transform=info_axis.transAxes,
+    )
+    info_axis.text(
+        0.5,
+        0.22,
+        phase_text,
+        ha="center",
+        va="center",
+        fontsize=9,
+        color=phase_color,
+        transform=info_axis.transAxes,
+        bbox=dict(boxstyle="round,pad=0.6", fc="#f8fafc", ec=phase_color, lw=1.5),
+    )
+
+    fig.suptitle("Neural Network Learning: One Epoch (Forward + Backprop)", y=0.98, fontsize=13, color="#0f172a", weight="bold")
+
+
+def render_nn_backpropagation_learning(
+    output_path: Path,
+    frame_count: int = 48,
+    hold_last: int = 12,
+    duration_ms: int = 120,
+    optimize: bool = True,
+) -> Path:
+    frames = [_nn_backpropagation_learning_frame(step, frame_count) for step in range(frame_count)]
+    frames.extend([_nn_backpropagation_learning_frame(frame_count - 1, frame_count) for _ in range(max(0, hold_last))])
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
+    maybe_optimize_gif(output_path, optimize=optimize)
+    return output_path
+
+
+def _draw_nn_playground_controls(
+    axis: plt.Axes,
+    problem_type: str,
+    epoch: int,
+    train_loss: float,
+    test_loss: float,
+) -> None:
+    axis.set_xlim(0, 1)
+    axis.set_ylim(0, 1)
+    axis.axis("off")
+    axis.set_facecolor("#f8fafc")
+
+    def draw_panel(y: float, height: float, title: str, lines: list[str]) -> None:
+        axis.add_patch(
+            Rectangle((0.04, y), 0.92, height, fc="#ffffff", ec="#cbd5e1", lw=1.0, transform=axis.transAxes)
+        )
+        axis.text(0.08, y + height - 0.055, title, fontsize=8.6, color="#0f172a", weight="bold", transform=axis.transAxes)
+        for index, line in enumerate(lines):
+            axis.text(
+                0.08,
+                y + height - 0.105 - index * 0.048,
+                line,
+                fontsize=7.8,
+                color="#334155",
+                transform=axis.transAxes,
+            )
+
+    draw_panel(
+        0.70,
+        0.26,
+        "DATA",
+        [
+            "Dataset: circles",
+            "Train/Test: 50%",
+            "Noise: 0",
+            "Batch size: 10",
+        ],
+    )
+    draw_panel(
+        0.40,
+        0.26,
+        "FEATURES",
+        [
+            "x₁, x₂",
+            "x₁·x₂",
+            "sin(x₁), sin(x₂)",
+        ],
+    )
+    draw_panel(
+        0.20,
+        0.16,
+        "MODEL",
+        [
+            "Learning rate: 0.03",
+            "Activation: Tanh",
+            f"Problem: {problem_type}",
+        ],
+    )
+    draw_panel(
+        0.03,
+        0.14,
+        "STATUS",
+        [
+            f"Epoch: {epoch:06d}",
+            f"Test loss: {test_loss:.3f}",
+            f"Train loss: {train_loss:.3f}",
+        ],
+    )
+
+
+def _draw_nn_playground_network(axis: plt.Axes, progress: float, seed: int = 0) -> None:
+    layer_sizes = (2, 6, 4, 2, 1)
+    positions = _network_node_positions(layer_sizes)
+    rng = np.random.default_rng(210 + seed)
+    axis.set_xlim(0, 1)
+    axis.set_ylim(0, 1)
+    axis.set_aspect("equal")
+    axis.axis("off")
+
+    for layer_index in range(len(layer_sizes) - 1):
+        weights = rng.normal(loc=0.0, scale=1.0, size=(layer_sizes[layer_index], layer_sizes[layer_index + 1]))
+        max_abs = float(np.max(np.abs(weights))) + 1e-6
+        for node_index, (x0, y0) in enumerate(positions[layer_index]):
+            for next_index, (x1, y1) in enumerate(positions[layer_index + 1]):
+                normalized = weights[node_index, next_index] / max_abs
+                scaled = normalized * (0.35 + 0.65 * progress)
+                edge_color = "#10b981" if scaled >= 0 else "#ef4444"
+                axis.plot(
+                    [x0, x1],
+                    [y0, y1],
+                    color=edge_color,
+                    lw=0.25 + 1.7 * abs(scaled),
+                    alpha=0.16 + 0.55 * abs(scaled),
+                    transform=axis.transAxes,
+                )
+
+    active_layer = int(np.floor(progress * len(layer_sizes))) % len(layer_sizes)
+    for layer_index, nodes in enumerate(positions):
+        node_color = "#2563eb" if layer_index == 0 else "#8b5cf6" if layer_index == len(layer_sizes) - 1 else "#f59e0b"
+        if layer_index == active_layer:
+            node_color = "#0ea5e9"
+        for x_pos, y_pos in nodes:
+            axis.add_patch(
+                Circle(
+                    (x_pos, y_pos),
+                    0.020,
+                    fc=node_color,
+                    ec="#0f172a",
+                    lw=0.65,
+                    alpha=0.96,
+                    transform=axis.transAxes,
+                )
+            )
+
+        layer_name = "Input" if layer_index == 0 else "Output" if layer_index == len(layer_sizes) - 1 else f"H{layer_index}"
+        axis.text(
+            nodes[0][0],
+            0.92,
+            layer_name,
+            ha="center",
+            va="center",
+            fontsize=8,
+            color="#334155",
+            transform=axis.transAxes,
+        )
+
+    axis.text(0.50, 0.05, "Edge thickness = |weight|", ha="center", fontsize=8.2, color="#64748b", transform=axis.transAxes)
+
+
+def _draw_nn_playground_classification_output(axis: plt.Axes, progress: float) -> None:
+    rng = np.random.default_rng(123)
+    class_a = rng.normal(loc=(-0.85, -0.55), scale=0.42, size=(120, 2))
+    class_b = rng.normal(loc=(0.82, 0.62), scale=0.42, size=(120, 2))
+
+    grid = np.linspace(-2.2, 2.2, 140)
+    xx, yy = np.meshgrid(grid, grid)
+    separator = xx * 1.0 - yy * 0.75 + 0.55 * np.sin(1.4 * xx)
+    sharpness = 0.7 + 3.3 * progress
+    probs = 1.0 / (1.0 + np.exp(-sharpness * separator))
+
+    axis.contourf(xx, yy, probs, levels=np.linspace(0, 1, 9), cmap="RdYlBu", alpha=0.76)
+    axis.contour(xx, yy, probs, levels=[0.5], colors="#0f172a", linewidths=1.3)
+    axis.scatter(class_a[:, 0], class_a[:, 1], s=12, color="#2563eb", alpha=0.72, label="Class A")
+    axis.scatter(class_b[:, 0], class_b[:, 1], s=12, color="#16a34a", alpha=0.72, label="Class B")
+    axis.set_xlim(-2.2, 2.2)
+    axis.set_ylim(-2.0, 2.0)
+    axis.set_xticks([])
+    axis.set_yticks([])
+    axis.set_title("OUTPUT", fontsize=10, color="#0f172a", weight="bold")
+    axis.text(0.5, -0.09, "Decision boundary sharpens", ha="center", fontsize=8, color="#334155", transform=axis.transAxes)
+    axis.legend(loc="upper left", fontsize=7, frameon=False)
+
+
+def _draw_nn_playground_regression_output(axis: plt.Axes, progress: float) -> None:
+    rng = np.random.default_rng(246)
+    x_train = np.linspace(-2.7, 2.7, 150)
+    target = np.sin(1.25 * x_train) + 0.34 * x_train
+    y_train = target + 0.17 * rng.normal(size=x_train.size)
+
+    baseline = 0.22 * x_train
+    prediction = (1 - progress) * baseline + progress * target
+
+    axis.scatter(x_train, y_train, s=9, color="#94a3b8", alpha=0.58, label="train data")
+    axis.plot(x_train, target, color="#2563eb", lw=1.6, alpha=0.65, label="target")
+    axis.plot(x_train, prediction, color="#8b5cf6", lw=2.2, label="prediction")
+    axis.set_xlim(-2.8, 2.8)
+    axis.set_ylim(-2.0, 2.0)
+    axis.set_xticks([])
+    axis.set_yticks([])
+    axis.set_title("OUTPUT", fontsize=10, color="#0f172a", weight="bold")
+    axis.text(0.5, -0.09, "Function fit improves", ha="center", fontsize=8, color="#334155", transform=axis.transAxes)
+    axis.legend(loc="upper left", fontsize=7, frameon=False)
+
+
+@gif.frame
+def _nn_playground_classification_frame(step: int, total_steps: int, dpi: int = 165) -> None:
+    plt.close("all")
+    fig = plt.figure(figsize=(10.6, 5.5), dpi=dpi)
+    grid = fig.add_gridspec(1, 3, width_ratios=[0.27, 0.40, 0.33], wspace=0.08)
+    controls_axis = fig.add_subplot(grid[0, 0])
+    network_axis = fig.add_subplot(grid[0, 1])
+    output_axis = fig.add_subplot(grid[0, 2])
+
+    progress = step / max(1, total_steps - 1)
+    epoch = int(np.interp(progress, [0, 1], [0, 1674]))
+    train_loss = float(np.interp(progress, [0, 1], [0.502, 0.000]))
+    test_loss = float(np.interp(progress, [0, 1], [0.511, 0.018]))
+
+    _draw_nn_playground_controls(
+        controls_axis,
+        problem_type="Classification",
+        epoch=epoch,
+        train_loss=train_loss,
+        test_loss=test_loss,
+    )
+    _draw_nn_playground_network(network_axis, progress=progress, seed=1)
+    _draw_nn_playground_classification_output(output_axis, progress=progress)
+
+    network_axis.set_title("3 HIDDEN LAYERS (6 → 4 → 2)", fontsize=10, color="#0f172a", weight="bold", pad=8)
+    fig.suptitle("NN Playground Style — Classification", y=0.985, fontsize=14, color="#0f172a", weight="bold")
+    fig.text(0.015, 0.015, "Edge Impulse • concept animation", fontsize=8, color="#64748b")
+
+
+def render_nn_playground_classification(
+    output_path: Path,
+    frame_count: int = 30,
+    hold_last: int = 8,
+    duration_ms: int = 105,
+    optimize: bool = True,
+) -> Path:
+    frames = [_nn_playground_classification_frame(step, frame_count) for step in range(frame_count)]
+    frames.extend(
+        [_nn_playground_classification_frame(frame_count - 1, frame_count) for _ in range(max(0, hold_last))]
+    )
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
+    maybe_optimize_gif(output_path, optimize=optimize)
+    return output_path
+
+
+@gif.frame
+def _nn_playground_regression_frame(step: int, total_steps: int, dpi: int = 165) -> None:
+    plt.close("all")
+    fig = plt.figure(figsize=(10.6, 5.5), dpi=dpi)
+    grid = fig.add_gridspec(1, 3, width_ratios=[0.27, 0.40, 0.33], wspace=0.08)
+    controls_axis = fig.add_subplot(grid[0, 0])
+    network_axis = fig.add_subplot(grid[0, 1])
+    output_axis = fig.add_subplot(grid[0, 2])
+
+    progress = step / max(1, total_steps - 1)
+    epoch = int(np.interp(progress, [0, 1], [0, 1800]))
+    train_loss = float(np.interp(progress, [0, 1], [0.132, 0.122]))
+    test_loss = float(np.interp(progress, [0, 1], [0.131, 0.122]))
+
+    _draw_nn_playground_controls(
+        controls_axis,
+        problem_type="Regression",
+        epoch=epoch,
+        train_loss=train_loss,
+        test_loss=test_loss,
+    )
+    _draw_nn_playground_network(network_axis, progress=progress, seed=2)
+    _draw_nn_playground_regression_output(output_axis, progress=progress)
+
+    network_axis.set_title("3 HIDDEN LAYERS (6 → 4 → 2)", fontsize=10, color="#0f172a", weight="bold", pad=8)
+    fig.suptitle("NN Playground Style — Regression", y=0.985, fontsize=14, color="#0f172a", weight="bold")
+    fig.text(0.015, 0.015, "Edge Impulse • concept animation", fontsize=8, color="#64748b")
+
+
+def render_nn_playground_regression(
+    output_path: Path,
+    frame_count: int = 30,
+    hold_last: int = 8,
+    duration_ms: int = 105,
+    optimize: bool = True,
+) -> Path:
+    frames = [_nn_playground_regression_frame(step, frame_count) for step in range(frame_count)]
+    frames.extend(
+        [_nn_playground_regression_frame(frame_count - 1, frame_count) for _ in range(max(0, hold_last))]
+    )
+    gif.save(frames, str(output_path), duration=_slow_duration_ms(duration_ms))
+    maybe_optimize_gif(output_path, optimize=optimize)
+    return output_path
+
+
 @gif.frame
 def _block_catalog_frame(
     title: str,
@@ -233,6 +1349,10 @@ def _style_concept_axis(axis: plt.Axes, title: str, xlabel: str = "", ylabel: st
     axis.set_xlabel(xlabel)
     axis.set_ylabel(ylabel)
     axis.grid(alpha=0.25)
+
+
+def classification_decision_boundary(x_values: np.ndarray) -> np.ndarray:
+    return CLASSIFICATION_BOUNDARY_SLOPE * x_values + CLASSIFICATION_BOUNDARY_INTERCEPT
 
 
 def _draw_dsp_block_concept(axis: plt.Axes, block_name: str, frame_seed: int) -> None:
@@ -359,7 +1479,7 @@ def _draw_ml_block_concept(axis: plt.Axes, block_name: str, frame_seed: int) -> 
         axis.scatter(class_a[:, 0], class_a[:, 1], color="#2563eb", s=15, alpha=0.7, label="Class A")
         axis.scatter(class_b[:, 0], class_b[:, 1], color="#16a34a", s=15, alpha=0.7, label="Class B")
         x_values = np.linspace(-2.2, 2.2, 120)
-        boundary = 0.55 * x_values + 0.1
+        boundary = classification_decision_boundary(x_values)
         axis.plot(x_values, boundary, "--", color="#111827", lw=1.6, label="Decision boundary")
         axis.legend(loc="upper left", fontsize=8, frameon=False)
         _style_concept_axis(axis, "Classification: learned boundary", "Feature 1", "Feature 2")
@@ -434,47 +1554,194 @@ def _draw_ml_block_concept(axis: plt.Axes, block_name: str, frame_seed: int) -> 
         return
 
     if block_name == "Visual anomaly detection (FOMO-AD)":
-        heat = rng.uniform(0.02, 0.2, size=(14, 14))
-        row, col = 8, 10
-        heat[row, col] = 1.0
-        axis.imshow(heat, cmap="magma", origin="lower")
-        axis.add_patch(Rectangle((col - 0.5, row - 0.5), 1, 1, fill=False, ec="#22c55e", lw=2.0))
-        axis.set_title("FOMO-AD: pixel-level anomaly heatmap", fontsize=12, color="#0f172a")
+        height, width = 150, 220
+        xx, yy = np.meshgrid(np.linspace(0, 1, width), np.linspace(0, 1, height))
+        concrete = 0.70 + 0.05 * np.sin(6.0 * xx + 4.5 * yy) + 0.06 * rng.normal(size=(height, width))
+        concrete = np.clip(concrete, 0.45, 0.92)
+        axis.imshow(concrete, cmap="gray", origin="lower", vmin=0, vmax=1)
+
+        crack_x = np.array([32, 50, 69, 92, 114, 139, 164, 188], dtype=float)
+        crack_y_base = np.array([126, 112, 101, 87, 73, 58, 44, 30], dtype=float)
+        crack_y = crack_y_base + 1.8 * np.sin(np.linspace(0, np.pi, crack_x.size) + frame_seed * 0.35)
+        axis.plot(crack_x, crack_y, color="#111827", lw=3.2, alpha=0.95)
+        axis.plot(crack_x, crack_y, color="#374151", lw=1.3, alpha=0.95)
+
+        crack_boxes = [
+            (42, 103, 24, 18),
+            (90, 76, 26, 18),
+            (146, 39, 24, 18),
+        ]
+        for index, (x_pos, y_pos, box_w, box_h) in enumerate(crack_boxes, start=1):
+            center_x = x_pos + box_w // 2
+            center_y = y_pos + box_h // 2
+            axis.add_patch(Rectangle((x_pos, y_pos), box_w, box_h, fill=False, ec="#dc2626", lw=2.2))
+            axis.text(
+                x_pos,
+                y_pos + box_h + 3,
+                f"crack {index}: x={center_x}, y={center_y}",
+                fontsize=7.2,
+                color="#b91c1c",
+                bbox={"fc": "white", "ec": "none", "alpha": 0.75, "pad": 0.5},
+            )
+
+        axis.set_xlim(0, width)
+        axis.set_ylim(0, height)
+        axis.set_title("FOMO-AD: concrete crack localization", fontsize=12, color="#0f172a")
         axis.set_xticks([])
         axis.set_yticks([])
         return
 
     if block_name == "Image Classification (Transfer Learning)":
-        labels = ["gear", "bolt", "bearing", "other"]
-        probs = np.array([0.08, 0.12, 0.73, 0.07])
-        axis.barh(labels, probs, color=["#94a3b8", "#94a3b8", "#22c55e", "#94a3b8"])
-        axis.set_xlim(0, 1)
-        _style_concept_axis(axis, "Image classification probabilities", "Probability", "")
+        axis.axis("off")
+        axis.set_title("Transfer learning: image model before vs after", fontsize=12, color="#0f172a")
+
+        left_axis = axis.inset_axes([0.05, 0.14, 0.40, 0.72])
+        right_axis = axis.inset_axes([0.55, 0.14, 0.40, 0.72])
+
+        base_labels = ["cat", "dog", "car", "other"]
+        base_probs = np.array([0.27, 0.24, 0.23, 0.26]) + 0.012 * rng.normal(size=4)
+        base_probs = np.clip(base_probs, 0.05, None)
+        base_probs = base_probs / base_probs.sum()
+        base_pos = np.arange(len(base_labels))
+        left_axis.barh(base_pos, base_probs, color=["#cbd5e1"] * 4)
+        left_axis.set_xlim(0, 1)
+        left_axis.set_yticks(base_pos)
+        left_axis.set_yticklabels(base_labels)
+        left_axis.grid(alpha=0.2, axis="x")
+        left_axis.set_title("Before transfer\n(generic base model)", fontsize=8, color="#334155")
+        left_axis.tick_params(labelsize=7)
+        left_axis.set_xlabel("Prob", fontsize=7)
+
+        target_labels = ["gear", "bolt", "bearing", "other"]
+        target_peak = float(np.clip(0.74 + 0.05 * np.sin(frame_seed * 0.35), 0.62, 0.85))
+        remainder = 1.0 - target_peak
+        target_probs = np.array([0.10, 0.12, target_peak, remainder - 0.22])
+        target_probs = np.clip(target_probs, 0.03, None)
+        target_probs = target_probs / target_probs.sum()
+        target_pos = np.arange(len(target_labels))
+        right_axis.barh(target_pos, target_probs, color=["#94a3b8", "#94a3b8", "#22c55e", "#94a3b8"])
+        right_axis.set_xlim(0, 1)
+        right_axis.set_yticks(target_pos)
+        right_axis.set_yticklabels(target_labels)
+        right_axis.grid(alpha=0.2, axis="x")
+        right_axis.set_title("After transfer\n(fine-tuned classes)", fontsize=8, color="#166534")
+        right_axis.tick_params(labelsize=7)
+        right_axis.set_xlabel("Prob", fontsize=7)
+
+        axis.annotate(
+            "",
+            xy=(0.55, 0.50),
+            xytext=(0.45, 0.50),
+            xycoords=axis.transAxes,
+            arrowprops={"arrowstyle": "->", "lw": 1.8, "color": "#0ea5e9"},
+        )
+        axis.text(0.50, 0.54, "transfer +\nfine-tune", ha="center", va="bottom", fontsize=8, color="#0f766e", transform=axis.transAxes)
         return
 
     if block_name == "Keyword Spotting (Transfer Learning)":
-        time = np.linspace(0, 1, 350)
-        waveform = 0.5 * np.sin(2 * np.pi * 6 * time) + 0.25 * np.sin(2 * np.pi * 18 * time)
+        axis.axis("off")
+        axis.set_title("Transfer learning: keyword spotting before vs after", fontsize=12, color="#0f172a")
+
+        left_wave = axis.inset_axes([0.05, 0.58, 0.40, 0.28])
+        right_wave = axis.inset_axes([0.55, 0.58, 0.40, 0.28])
+        left_probs = axis.inset_axes([0.05, 0.14, 0.40, 0.30])
+        right_probs = axis.inset_axes([0.55, 0.14, 0.40, 0.30])
+
+        time = np.linspace(0, 1, 320)
+        waveform = 0.45 * np.sin(2 * np.pi * 6 * time) + 0.22 * np.sin(2 * np.pi * 18 * time)
         waveform += 0.05 * rng.normal(size=time.size)
-        axis.plot(time, waveform, color="#0ea5e9", lw=1.3)
-        axis.axvspan(0.55, 0.75, color="#22c55e", alpha=0.25, label="keyword window")
-        axis.legend(loc="upper left", fontsize=8, frameon=False)
-        _style_concept_axis(axis, "Keyword spotting over audio stream", "Time", "Amplitude")
-        axis.set_ylim(-1.2, 1.2)
+
+        left_wave.plot(time, waveform, color="#64748b", lw=1.1)
+        left_wave.set_ylim(-1.2, 1.2)
+        left_wave.set_xticks([])
+        left_wave.set_yticks([])
+        left_wave.set_title("Before transfer\n(generic speech model)", fontsize=8, color="#334155")
+        left_wave.text(0.03, 0.08, "keyword score: 0.41", transform=left_wave.transAxes, fontsize=7.5, color="#475569")
+
+        right_wave.plot(time, waveform, color="#0ea5e9", lw=1.1)
+        right_wave.axvspan(0.56, 0.76, color="#22c55e", alpha=0.24)
+        right_wave.set_ylim(-1.2, 1.2)
+        right_wave.set_xticks([])
+        right_wave.set_yticks([])
+        keyword_score = float(np.clip(0.90 + 0.03 * np.sin(frame_seed * 0.25), 0.82, 0.96))
+        right_wave.set_title("After transfer\n(wake-word fine-tune)", fontsize=8, color="#166534")
+        right_wave.text(
+            0.03,
+            0.08,
+            f"keyword score: {keyword_score:.2f}",
+            transform=right_wave.transAxes,
+            fontsize=7.5,
+            color="#166534",
+        )
+
+        left_labels = ["speech", "music", "noise"]
+        left_values = [0.37, 0.32, 0.31]
+        left_pos = np.arange(len(left_labels))
+        left_probs.barh(left_pos, left_values, color=["#cbd5e1", "#cbd5e1", "#cbd5e1"])
+        left_probs.set_xlim(0, 1)
+        left_probs.set_yticks(left_pos)
+        left_probs.set_yticklabels(left_labels)
+        left_probs.grid(alpha=0.2, axis="x")
+        left_probs.tick_params(labelsize=7)
+        left_probs.set_xlabel("Prob", fontsize=7)
+
+        right_labels = ["hey-edge", "other", "silence"]
+        right_values = [keyword_score, 0.07, max(0.01, 1.0 - keyword_score - 0.07)]
+        right_pos = np.arange(len(right_labels))
+        right_probs.barh(right_pos, right_values, color=["#22c55e", "#94a3b8", "#94a3b8"])
+        right_probs.set_xlim(0, 1)
+        right_probs.set_yticks(right_pos)
+        right_probs.set_yticklabels(right_labels)
+        right_probs.grid(alpha=0.2, axis="x")
+        right_probs.tick_params(labelsize=7)
+        right_probs.set_xlabel("Prob", fontsize=7)
+
+        axis.annotate(
+            "",
+            xy=(0.55, 0.50),
+            xytext=(0.45, 0.50),
+            xycoords=axis.transAxes,
+            arrowprops={"arrowstyle": "->", "lw": 1.8, "color": "#0ea5e9"},
+        )
+        axis.text(0.50, 0.54, "transfer +\nfine-tune", ha="center", va="bottom", fontsize=8, color="#0f766e", transform=axis.transAxes)
         return
 
     if block_name == "Object Detection (MobileNetV2 SSD FPN)":
-        canvas = np.tile(np.linspace(0.25, 0.75, 180), (110, 1))
-        axis.imshow(canvas, cmap="gray", origin="lower")
-        for x_pos, y_pos, width, height, label in [
-            (18, 16, 45, 35, "part A"),
-            (96, 42, 55, 45, "part B"),
-        ]:
-            axis.add_patch(Rectangle((x_pos, y_pos), width, height, fill=False, ec="#22c55e", lw=2))
-            axis.text(x_pos, y_pos + height + 3, label, color="#22c55e", fontsize=8)
+        canvas = np.tile(np.linspace(0.90, 0.76, 220), (150, 1))
+        axis.imshow(canvas, cmap="gray", origin="lower", vmin=0, vmax=1)
+
+        axis.add_patch(Rectangle((0, 0), 220, 38, fc="#d6d3d1", ec="none", alpha=0.95))
+
+        apple_center = np.array([62.0, 64.0]) + rng.normal(scale=[0.7, 0.5], size=2)
+        axis.add_patch(Circle((apple_center[0], apple_center[1]), radius=16, fc="#ef4444", ec="#991b1b", lw=1.4, alpha=0.95))
+        axis.add_patch(Rectangle((apple_center[0] - 1.4, apple_center[1] + 14), 2.8, 8, fc="#7c2d12", ec="none"))
+        axis.add_patch(Ellipse((apple_center[0] + 8, apple_center[1] + 18), width=10, height=5, angle=35, fc="#22c55e", ec="#166534", lw=0.8))
+
+        orange_center = np.array([148.0, 58.0]) + rng.normal(scale=[0.8, 0.6], size=2)
+        axis.add_patch(Circle((orange_center[0], orange_center[1]), radius=15, fc="#f97316", ec="#9a3412", lw=1.4, alpha=0.95))
+        axis.add_patch(Rectangle((orange_center[0] - 1.2, orange_center[1] + 13), 2.4, 6, fc="#7c2d12", ec="none"))
+        axis.add_patch(Ellipse((orange_center[0] + 7, orange_center[1] + 16), width=9, height=4.5, angle=28, fc="#22c55e", ec="#166534", lw=0.8))
+
+        detections = [
+            (apple_center[0] - 20, apple_center[1] - 20, 40, 44, "apple 0.95"),
+            (orange_center[0] - 18, orange_center[1] - 18, 36, 40, "orange 0.93"),
+        ]
+        for x_pos, y_pos, width, height, label in detections:
+            axis.add_patch(Rectangle((x_pos, y_pos), width, height, fill=False, ec="#22c55e", lw=2.2))
+            axis.text(
+                x_pos,
+                y_pos + height + 3,
+                label,
+                color="#16a34a",
+                fontsize=8,
+                bbox={"fc": "white", "ec": "none", "alpha": 0.75, "pad": 0.6},
+            )
+
+        axis.set_xlim(0, 220)
+        axis.set_ylim(0, 150)
         axis.set_xticks([])
         axis.set_yticks([])
-        axis.set_title("Object detection: bounding boxes", fontsize=12, color="#0f172a")
+        axis.set_title("Object detection: apple and orange", fontsize=12, color="#0f172a")
         return
 
     if block_name == "Object Detection (FOMO)":
@@ -918,6 +2185,96 @@ def run_selected_presets(
                     optimize=optimize,
                 )
             )
+        elif preset == "nn_training_layers":
+            generated.append(
+                render_nn_training_layers(
+                    output_path=output_path,
+                    frame_count=24,
+                    hold_last=6,
+                    duration_ms=95,
+                    optimize=optimize,
+                )
+            )
+        elif preset == "nn_inference_layers":
+            generated.append(
+                render_nn_inference_layers(
+                    output_path=output_path,
+                    frame_count=24,
+                    hold_last=6,
+                    duration_ms=95,
+                    optimize=optimize,
+                )
+            )
+        elif preset == "nn_training_vs_on_device_inference":
+            generated.append(
+                render_nn_training_vs_on_device_inference(
+                    output_path=output_path,
+                    frame_count=24,
+                    hold_last=6,
+                    duration_ms=95,
+                    optimize=optimize,
+                )
+            )
+        elif preset == "nn_single_neuron":
+            generated.append(
+                render_nn_single_neuron(
+                    output_path=output_path,
+                    frame_count=28,
+                    hold_last=8,
+                    duration_ms=100,
+                    optimize=optimize,
+                )
+            )
+        elif preset == "nn_architecture_layers":
+            generated.append(
+                render_nn_architecture_layers(
+                    output_path=output_path,
+                    frame_count=26,
+                    hold_last=8,
+                    duration_ms=100,
+                    optimize=optimize,
+                )
+            )
+        elif preset == "nn_deep_network":
+            generated.append(
+                render_nn_deep_network(
+                    output_path=output_path,
+                    frame_count=30,
+                    hold_last=8,
+                    duration_ms=95,
+                    optimize=optimize,
+                )
+            )
+        elif preset == "nn_backpropagation_learning":
+            generated.append(
+                render_nn_backpropagation_learning(
+                    output_path=output_path,
+                    frame_count=48,
+                    hold_last=12,
+                    duration_ms=120,
+                    optimize=optimize,
+                )
+            )
+        elif preset == "nn_playground_classification":
+            generated.append(
+                render_nn_playground_classification(
+                    output_path=output_path,
+                    frame_count=30,
+                    hold_last=8,
+                    duration_ms=105,
+                    optimize=optimize,
+                )
+            )
+        elif preset == "nn_playground_regression":
+            generated.append(
+                render_nn_playground_regression(
+                    output_path=output_path,
+                    frame_count=30,
+                    hold_last=8,
+                    duration_ms=105,
+                    optimize=optimize,
+                )
+            )
         elif preset == "ml_learning_blocks":
             generated.append(
                 render_ml_learning_blocks(
@@ -945,6 +2302,16 @@ def run_selected_presets(
                     frame_count=24,
                     hold_last=6,
                     duration_ms=100,
+                    optimize=optimize,
+                )
+            )
+        elif preset == "embedded_quantization_8bit_vs_float32":
+            generated.append(
+                render_embedded_quantization_8bit_vs_float32(
+                    output_path=output_path,
+                    frame_count=22,
+                    hold_last=6,
+                    duration_ms=95,
                     optimize=optimize,
                 )
             )

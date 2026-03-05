@@ -53,6 +53,166 @@ def test_render_nn_sigmoid_shift_creates_gif(tmp_path: Path) -> None:
     assert output_path.stat().st_size > 0
 
 
+def test_render_nn_training_layers_creates_gif(tmp_path: Path) -> None:
+    output_path = tmp_path / "nn_training_layers.gif"
+
+    created = pipeline.render_nn_training_layers(
+        output_path=output_path,
+        frame_count=6,
+        hold_last=1,
+        duration_ms=40,
+        optimize=False,
+    )
+
+    assert created == output_path
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0
+
+
+def test_render_nn_inference_layers_creates_gif(tmp_path: Path) -> None:
+    output_path = tmp_path / "nn_inference_layers.gif"
+
+    created = pipeline.render_nn_inference_layers(
+        output_path=output_path,
+        frame_count=6,
+        hold_last=1,
+        duration_ms=40,
+        optimize=False,
+    )
+
+    assert created == output_path
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0
+
+
+def test_render_nn_training_vs_on_device_inference_creates_gif(tmp_path: Path) -> None:
+    output_path = tmp_path / "nn_training_vs_on_device_inference.gif"
+
+    created = pipeline.render_nn_training_vs_on_device_inference(
+        output_path=output_path,
+        frame_count=6,
+        hold_last=1,
+        duration_ms=40,
+        optimize=False,
+    )
+
+    assert created == output_path
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0
+
+
+def test_render_embedded_quantization_creates_gif(tmp_path: Path) -> None:
+    output_path = tmp_path / "embedded_quantization_8bit_vs_float32.gif"
+
+    created = pipeline.render_embedded_quantization_8bit_vs_float32(
+        output_path=output_path,
+        frame_count=6,
+        hold_last=1,
+        duration_ms=40,
+        optimize=False,
+    )
+
+    assert created == output_path
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0
+
+
+def test_render_nn_single_neuron_creates_gif(tmp_path: Path) -> None:
+    output_path = tmp_path / "nn_single_neuron.gif"
+
+    created = pipeline.render_nn_single_neuron(
+        output_path=output_path,
+        frame_count=6,
+        hold_last=1,
+        duration_ms=40,
+        optimize=False,
+    )
+
+    assert created == output_path
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0
+
+
+def test_render_nn_architecture_layers_creates_gif(tmp_path: Path) -> None:
+    output_path = tmp_path / "nn_architecture_layers.gif"
+
+    created = pipeline.render_nn_architecture_layers(
+        output_path=output_path,
+        frame_count=6,
+        hold_last=1,
+        duration_ms=40,
+        optimize=False,
+    )
+
+    assert created == output_path
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0
+
+
+def test_render_nn_deep_network_creates_gif(tmp_path: Path) -> None:
+    output_path = tmp_path / "nn_deep_network.gif"
+
+    created = pipeline.render_nn_deep_network(
+        output_path=output_path,
+        frame_count=6,
+        hold_last=1,
+        duration_ms=40,
+        optimize=False,
+    )
+
+    assert created == output_path
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0
+
+
+def test_render_nn_backpropagation_learning_creates_gif(tmp_path: Path) -> None:
+    output_path = tmp_path / "nn_backpropagation_learning.gif"
+
+    created = pipeline.render_nn_backpropagation_learning(
+        output_path=output_path,
+        frame_count=6,
+        hold_last=1,
+        duration_ms=40,
+        optimize=False,
+    )
+
+    assert created == output_path
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0
+
+
+def test_render_nn_playground_classification_creates_gif(tmp_path: Path) -> None:
+    output_path = tmp_path / "nn_playground_classification.gif"
+
+    created = pipeline.render_nn_playground_classification(
+        output_path=output_path,
+        frame_count=6,
+        hold_last=1,
+        duration_ms=40,
+        optimize=False,
+    )
+
+    assert created == output_path
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0
+
+
+def test_render_nn_playground_regression_creates_gif(tmp_path: Path) -> None:
+    output_path = tmp_path / "nn_playground_regression.gif"
+
+    created = pipeline.render_nn_playground_regression(
+        output_path=output_path,
+        frame_count=6,
+        hold_last=1,
+        duration_ms=40,
+        optimize=False,
+    )
+
+    assert created == output_path
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0
+
+
 def test_render_dsp_sine_shift_creates_gif(tmp_path: Path) -> None:
     output_path = tmp_path / "dsp_sine_shift.gif"
     scratch_dir = tmp_path / "scratch"
