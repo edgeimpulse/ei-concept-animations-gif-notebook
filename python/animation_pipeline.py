@@ -1040,62 +1040,55 @@ def _draw_nn_playground_controls(
     axis.axis("off")
     axis.set_facecolor("#f8fafc")
 
-    def draw_panel(y: float, height: float, title: str, lines: list[str]) -> None:
+    accent = "#22c55e" if problem_type == "Classification" else "#8b5cf6"
+    tone = "#0ea5e9" if problem_type == "Classification" else "#a855f7"
+
+    panel_specs = [(0.70, 0.26), (0.40, 0.26), (0.20, 0.16), (0.03, 0.14)]
+    for y, height in panel_specs:
         axis.add_patch(
             Rectangle((0.04, y), 0.92, height, fc="#ffffff", ec="#cbd5e1", lw=1.0, transform=axis.transAxes)
         )
-        axis.text(0.08, y + height - 0.055, title, fontsize=8.6, color="#0f172a", weight="bold", transform=axis.transAxes)
-        for index, line in enumerate(lines):
-            axis.text(
-                0.08,
-                y + height - 0.105 - index * 0.048,
-                line,
-                fontsize=7.8,
-                color="#334155",
-                transform=axis.transAxes,
+
+    # DATA icons
+    for i in range(5):
+        x_pos = 0.10 + i * 0.16
+        axis.add_patch(Circle((x_pos, 0.86), 0.028, fc="#dbeafe", ec="#93c5fd", lw=0.8, transform=axis.transAxes))
+    axis.add_patch(Rectangle((0.08, 0.76), 0.84, 0.05, fc="#e2e8f0", ec="none", transform=axis.transAxes))
+    axis.add_patch(Rectangle((0.08, 0.76), 0.42, 0.05, fc=tone, ec="none", alpha=0.45, transform=axis.transAxes))
+
+    # FEATURE toggles
+    for row in range(2):
+        for col in range(3):
+            x_pos = 0.09 + col * 0.28
+            y_pos = 0.57 - row * 0.10
+            active = (row == 0 and col < 2) or (row == 1 and col == 0)
+            axis.add_patch(
+                Rectangle(
+                    (x_pos, y_pos),
+                    0.20,
+                    0.06,
+                    fc=accent if active else "#e2e8f0",
+                    ec="#cbd5e1",
+                    lw=0.6,
+                    alpha=0.75,
+                    transform=axis.transAxes,
+                )
             )
 
-    draw_panel(
-        0.70,
-        0.26,
-        "DATA",
-        [
-            "Dataset: circles",
-            "Train/Test: 50%",
-            "Noise: 0",
-            "Batch size: 10",
-        ],
-    )
-    draw_panel(
-        0.40,
-        0.26,
-        "FEATURES",
-        [
-            "x₁, x₂",
-            "x₁·x₂",
-            "sin(x₁), sin(x₂)",
-        ],
-    )
-    draw_panel(
-        0.20,
-        0.16,
-        "MODEL",
-        [
-            "Learning rate: 0.03",
-            "Activation: Tanh",
-            f"Problem: {problem_type}",
-        ],
-    )
-    draw_panel(
-        0.03,
-        0.14,
-        "STATUS",
-        [
-            f"Epoch: {epoch:06d}",
-            f"Test loss: {test_loss:.3f}",
-            f"Train loss: {train_loss:.3f}",
-        ],
-    )
+    # MODEL sliders
+    progress = (epoch % 1800) / 1800.0
+    axis.plot([0.10, 0.90], [0.31, 0.31], color="#cbd5e1", lw=4.0, transform=axis.transAxes)
+    axis.plot([0.10, 0.90], [0.25, 0.25], color="#cbd5e1", lw=4.0, transform=axis.transAxes)
+    axis.add_patch(Circle((0.10 + 0.80 * (0.25 + 0.55 * progress), 0.31), 0.018, fc=tone, ec="#0f172a", lw=0.5, transform=axis.transAxes))
+    axis.add_patch(Circle((0.10 + 0.80 * (0.70 - 0.50 * progress), 0.25), 0.018, fc=accent, ec="#0f172a", lw=0.5, transform=axis.transAxes))
+
+    # STATUS bars (loss meters)
+    train_meter = np.clip(1.0 - 1.8 * train_loss, 0.05, 0.98)
+    test_meter = np.clip(1.0 - 1.8 * test_loss, 0.05, 0.98)
+    axis.add_patch(Rectangle((0.08, 0.085), 0.84, 0.028, fc="#e2e8f0", ec="none", transform=axis.transAxes))
+    axis.add_patch(Rectangle((0.08, 0.045), 0.84, 0.028, fc="#e2e8f0", ec="none", transform=axis.transAxes))
+    axis.add_patch(Rectangle((0.08, 0.085), 0.84 * train_meter, 0.028, fc=accent, ec="none", alpha=0.75, transform=axis.transAxes))
+    axis.add_patch(Rectangle((0.08, 0.045), 0.84 * test_meter, 0.028, fc=tone, ec="none", alpha=0.75, transform=axis.transAxes))
 
 
 def _draw_nn_playground_network(axis: plt.Axes, progress: float, seed: int = 0) -> None:
@@ -1142,19 +1135,7 @@ def _draw_nn_playground_network(axis: plt.Axes, progress: float, seed: int = 0) 
                 )
             )
 
-        layer_name = "Input" if layer_index == 0 else "Output" if layer_index == len(layer_sizes) - 1 else f"H{layer_index}"
-        axis.text(
-            nodes[0][0],
-            0.92,
-            layer_name,
-            ha="center",
-            va="center",
-            fontsize=8,
-            color="#334155",
-            transform=axis.transAxes,
-        )
 
-    axis.text(0.50, 0.05, "Edge thickness = |weight|", ha="center", fontsize=8.2, color="#64748b", transform=axis.transAxes)
 
 
 def _draw_nn_playground_classification_output(axis: plt.Axes, progress: float) -> None:
@@ -1170,15 +1151,12 @@ def _draw_nn_playground_classification_output(axis: plt.Axes, progress: float) -
 
     axis.contourf(xx, yy, probs, levels=np.linspace(0, 1, 9), cmap="RdYlBu", alpha=0.76)
     axis.contour(xx, yy, probs, levels=[0.5], colors="#0f172a", linewidths=1.3)
-    axis.scatter(class_a[:, 0], class_a[:, 1], s=12, color="#2563eb", alpha=0.72, label="Class A")
-    axis.scatter(class_b[:, 0], class_b[:, 1], s=12, color="#16a34a", alpha=0.72, label="Class B")
+    axis.scatter(class_a[:, 0], class_a[:, 1], s=12, color="#2563eb", alpha=0.72)
+    axis.scatter(class_b[:, 0], class_b[:, 1], s=12, color="#16a34a", alpha=0.72)
     axis.set_xlim(-2.2, 2.2)
     axis.set_ylim(-2.0, 2.0)
     axis.set_xticks([])
     axis.set_yticks([])
-    axis.set_title("OUTPUT", fontsize=10, color="#0f172a", weight="bold")
-    axis.text(0.5, -0.09, "Decision boundary sharpens", ha="center", fontsize=8, color="#334155", transform=axis.transAxes)
-    axis.legend(loc="upper left", fontsize=7, frameon=False)
 
 
 def _draw_nn_playground_regression_output(axis: plt.Axes, progress: float) -> None:
@@ -1190,16 +1168,13 @@ def _draw_nn_playground_regression_output(axis: plt.Axes, progress: float) -> No
     baseline = 0.22 * x_train
     prediction = (1 - progress) * baseline + progress * target
 
-    axis.scatter(x_train, y_train, s=9, color="#94a3b8", alpha=0.58, label="train data")
-    axis.plot(x_train, target, color="#2563eb", lw=1.6, alpha=0.65, label="target")
-    axis.plot(x_train, prediction, color="#8b5cf6", lw=2.2, label="prediction")
+    axis.scatter(x_train, y_train, s=9, color="#94a3b8", alpha=0.58)
+    axis.plot(x_train, target, color="#2563eb", lw=1.6, alpha=0.65)
+    axis.plot(x_train, prediction, color="#8b5cf6", lw=2.2)
     axis.set_xlim(-2.8, 2.8)
     axis.set_ylim(-2.0, 2.0)
     axis.set_xticks([])
     axis.set_yticks([])
-    axis.set_title("OUTPUT", fontsize=10, color="#0f172a", weight="bold")
-    axis.text(0.5, -0.09, "Function fit improves", ha="center", fontsize=8, color="#334155", transform=axis.transAxes)
-    axis.legend(loc="upper left", fontsize=7, frameon=False)
 
 
 @gif.frame
@@ -1225,10 +1200,6 @@ def _nn_playground_classification_frame(step: int, total_steps: int, dpi: int = 
     )
     _draw_nn_playground_network(network_axis, progress=progress, seed=1)
     _draw_nn_playground_classification_output(output_axis, progress=progress)
-
-    network_axis.set_title("3 HIDDEN LAYERS (6 → 4 → 2)", fontsize=10, color="#0f172a", weight="bold", pad=8)
-    fig.suptitle("NN Playground Style — Classification", y=0.985, fontsize=14, color="#0f172a", weight="bold")
-    fig.text(0.015, 0.015, "Edge Impulse • concept animation", fontsize=8, color="#64748b")
 
 
 def render_nn_playground_classification(
@@ -1270,10 +1241,6 @@ def _nn_playground_regression_frame(step: int, total_steps: int, dpi: int = 165)
     )
     _draw_nn_playground_network(network_axis, progress=progress, seed=2)
     _draw_nn_playground_regression_output(output_axis, progress=progress)
-
-    network_axis.set_title("3 HIDDEN LAYERS (6 → 4 → 2)", fontsize=10, color="#0f172a", weight="bold", pad=8)
-    fig.suptitle("NN Playground Style — Regression", y=0.985, fontsize=14, color="#0f172a", weight="bold")
-    fig.text(0.015, 0.015, "Edge Impulse • concept animation", fontsize=8, color="#64748b")
 
 
 def render_nn_playground_regression(
@@ -1640,70 +1607,98 @@ def _draw_ml_block_concept(axis: plt.Axes, block_name: str, frame_seed: int) -> 
 
     if block_name == "Keyword Spotting (Transfer Learning)":
         axis.axis("off")
-        axis.set_title("Transfer learning: keyword spotting before vs after", fontsize=12, color="#0f172a")
+        axis.set_title("Transfer learning: keyword spotting (before → transfer → after)", fontsize=12, color="#0f172a")
 
-        left_wave = axis.inset_axes([0.05, 0.58, 0.40, 0.28])
-        right_wave = axis.inset_axes([0.55, 0.58, 0.40, 0.28])
-        left_probs = axis.inset_axes([0.05, 0.14, 0.40, 0.30])
-        right_probs = axis.inset_axes([0.55, 0.14, 0.40, 0.30])
+        before_panel = axis.inset_axes([0.03, 0.10, 0.30, 0.80])
+        transfer_panel = axis.inset_axes([0.36, 0.16, 0.28, 0.68])
+        after_panel = axis.inset_axes([0.67, 0.10, 0.30, 0.80])
 
-        time = np.linspace(0, 1, 320)
+        for panel in (before_panel, transfer_panel, after_panel):
+            panel.set_xlim(0, 1)
+            panel.set_ylim(0, 1)
+            panel.axis("off")
+
+        before_panel.add_patch(Rectangle((0.01, 0.01), 0.98, 0.98, fc="#ffffff", ec="#cbd5e1", lw=1.0, transform=before_panel.transAxes))
+        after_panel.add_patch(Rectangle((0.01, 0.01), 0.98, 0.98, fc="#ffffff", ec="#cbd5e1", lw=1.0, transform=after_panel.transAxes))
+
+        before_panel.text(0.04, 0.94, "Before transfer", fontsize=8.5, color="#334155", weight="bold", transform=before_panel.transAxes)
+        before_panel.text(0.04, 0.88, "generic speech model", fontsize=7.2, color="#64748b", transform=before_panel.transAxes)
+        after_panel.text(0.04, 0.94, "After transfer", fontsize=8.5, color="#166534", weight="bold", transform=after_panel.transAxes)
+        after_panel.text(0.04, 0.88, "wake-word fine-tuned", fontsize=7.2, color="#15803d", transform=after_panel.transAxes)
+
+        time = np.linspace(0, 1, 340)
         waveform = 0.45 * np.sin(2 * np.pi * 6 * time) + 0.22 * np.sin(2 * np.pi * 18 * time)
         waveform += 0.05 * rng.normal(size=time.size)
 
-        left_wave.plot(time, waveform, color="#64748b", lw=1.1)
-        left_wave.set_ylim(-1.2, 1.2)
-        left_wave.set_xticks([])
-        left_wave.set_yticks([])
-        left_wave.set_title("Before transfer\n(generic speech model)", fontsize=8, color="#334155")
-        left_wave.text(0.03, 0.08, "keyword score: 0.41", transform=left_wave.transAxes, fontsize=7.5, color="#475569")
+        keyword_start = 0.56
+        keyword_end = 0.74
+        pre_keyword_score = float(np.clip(0.22 + 0.03 * np.sin(frame_seed * 0.28), 0.16, 0.32))
+        post_keyword_score = float(np.clip(0.91 + 0.03 * np.sin(frame_seed * 0.25), 0.85, 0.97))
 
-        right_wave.plot(time, waveform, color="#0ea5e9", lw=1.1)
-        right_wave.axvspan(0.56, 0.76, color="#22c55e", alpha=0.24)
-        right_wave.set_ylim(-1.2, 1.2)
-        right_wave.set_xticks([])
-        right_wave.set_yticks([])
-        keyword_score = float(np.clip(0.90 + 0.03 * np.sin(frame_seed * 0.25), 0.82, 0.96))
-        right_wave.set_title("After transfer\n(wake-word fine-tune)", fontsize=8, color="#166534")
-        right_wave.text(
-            0.03,
-            0.08,
-            f"keyword score: {keyword_score:.2f}",
-            transform=right_wave.transAxes,
-            fontsize=7.5,
-            color="#166534",
-        )
+        before_wave = before_panel.inset_axes([0.07, 0.52, 0.86, 0.30])
+        before_wave.plot(time, waveform, color="#64748b", lw=1.1)
+        before_wave.set_ylim(-1.2, 1.2)
+        before_wave.set_xticks([])
+        before_wave.set_yticks([])
+        before_wave.set_title("Audio stream", fontsize=7, color="#475569")
+        before_wave.text(0.03, 0.06, f"wake-word score: {pre_keyword_score:.2f}", transform=before_wave.transAxes, fontsize=7, color="#475569")
 
-        left_labels = ["speech", "music", "noise"]
-        left_values = [0.37, 0.32, 0.31]
-        left_pos = np.arange(len(left_labels))
-        left_probs.barh(left_pos, left_values, color=["#cbd5e1", "#cbd5e1", "#cbd5e1"])
-        left_probs.set_xlim(0, 1)
-        left_probs.set_yticks(left_pos)
-        left_probs.set_yticklabels(left_labels)
-        left_probs.grid(alpha=0.2, axis="x")
-        left_probs.tick_params(labelsize=7)
-        left_probs.set_xlabel("Prob", fontsize=7)
+        before_probs = before_panel.inset_axes([0.07, 0.16, 0.86, 0.26])
+        before_labels = ["speech", "noise", "wake-word"]
+        before_values = np.array([0.52, 0.48 - pre_keyword_score, pre_keyword_score])
+        before_values = np.clip(before_values, 0.02, 0.96)
+        before_values = before_values / before_values.sum()
+        before_pos = np.arange(len(before_labels))
+        before_probs.barh(before_pos, before_values, color=["#cbd5e1", "#cbd5e1", "#fca5a5"])
+        before_probs.set_xlim(0, 1)
+        before_probs.set_yticks(before_pos)
+        before_probs.set_yticklabels(before_labels)
+        before_probs.grid(alpha=0.2, axis="x")
+        before_probs.tick_params(labelsize=6.6)
 
-        right_labels = ["hey-edge", "other", "silence"]
-        right_values = [keyword_score, 0.07, max(0.01, 1.0 - keyword_score - 0.07)]
-        right_pos = np.arange(len(right_labels))
-        right_probs.barh(right_pos, right_values, color=["#22c55e", "#94a3b8", "#94a3b8"])
-        right_probs.set_xlim(0, 1)
-        right_probs.set_yticks(right_pos)
-        right_probs.set_yticklabels(right_labels)
-        right_probs.grid(alpha=0.2, axis="x")
-        right_probs.tick_params(labelsize=7)
-        right_probs.set_xlabel("Prob", fontsize=7)
+        transfer_panel.add_patch(Rectangle((0.07, 0.56), 0.86, 0.28, fc="#dbeafe", ec="#93c5fd", lw=1.0, transform=transfer_panel.transAxes))
+        transfer_panel.text(0.50, 0.72, "Transferred", ha="center", fontsize=8, color="#1e3a8a", weight="bold", transform=transfer_panel.transAxes)
+        transfer_panel.text(0.50, 0.63, "acoustic feature", ha="center", fontsize=7.3, color="#1e40af", transform=transfer_panel.transAxes)
+        transfer_panel.text(0.50, 0.57, "extractor (frozen)", ha="center", fontsize=7.3, color="#1e40af", transform=transfer_panel.transAxes)
 
-        axis.annotate(
+        transfer_panel.add_patch(Rectangle((0.18, 0.28), 0.64, 0.18, fc="#dcfce7", ec="#86efac", lw=1.0, transform=transfer_panel.transAxes))
+        transfer_panel.text(0.50, 0.39, "Fine-tuned", ha="center", fontsize=8, color="#166534", weight="bold", transform=transfer_panel.transAxes)
+        transfer_panel.text(0.50, 0.31, "wake-word head", ha="center", fontsize=7.3, color="#166534", transform=transfer_panel.transAxes)
+
+        transfer_panel.annotate(
             "",
-            xy=(0.55, 0.50),
-            xytext=(0.45, 0.50),
-            xycoords=axis.transAxes,
-            arrowprops={"arrowstyle": "->", "lw": 1.8, "color": "#0ea5e9"},
+            xy=(0.50, 0.46),
+            xytext=(0.50, 0.56),
+            xycoords=transfer_panel.transAxes,
+            arrowprops={"arrowstyle": "->", "lw": 1.4, "color": "#0ea5e9"},
         )
-        axis.text(0.50, 0.54, "transfer +\nfine-tune", ha="center", va="bottom", fontsize=8, color="#0f766e", transform=axis.transAxes)
+        transfer_panel.text(0.50, 0.12, "small dataset\n+ few epochs", ha="center", fontsize=7.2, color="#0f766e", transform=transfer_panel.transAxes)
+
+        after_wave = after_panel.inset_axes([0.07, 0.52, 0.86, 0.30])
+        after_wave.plot(time, waveform, color="#0ea5e9", lw=1.1)
+        after_wave.axvspan(keyword_start, keyword_end, color="#dc2626", alpha=0.18)
+        after_wave.set_ylim(-1.2, 1.2)
+        after_wave.set_xticks([])
+        after_wave.set_yticks([])
+        after_wave.set_title("Audio stream", fontsize=7, color="#0369a1")
+        after_wave.text(0.03, 0.06, f"wake-word score: {post_keyword_score:.2f}", transform=after_wave.transAxes, fontsize=7, color="#166534")
+        after_wave.text(0.62, 0.84, "POI", fontsize=6.6, color="#b91c1c", transform=after_wave.transAxes)
+
+        after_probs = after_panel.inset_axes([0.07, 0.16, 0.86, 0.26])
+        other_score = 0.06
+        silence_score = max(0.01, 1.0 - post_keyword_score - other_score)
+        after_labels = ["wake-word", "other", "silence"]
+        after_values = [post_keyword_score, other_score, silence_score]
+        after_pos = np.arange(len(after_labels))
+        after_probs.barh(after_pos, after_values, color=["#22c55e", "#94a3b8", "#94a3b8"])
+        after_probs.set_xlim(0, 1)
+        after_probs.set_yticks(after_pos)
+        after_probs.set_yticklabels(after_labels)
+        after_probs.grid(alpha=0.2, axis="x")
+        after_probs.tick_params(labelsize=6.6)
+
+        axis.annotate("", xy=(0.36, 0.50), xytext=(0.33, 0.50), xycoords=axis.transAxes, arrowprops={"arrowstyle": "->", "lw": 1.8, "color": "#0ea5e9"})
+        axis.annotate("", xy=(0.67, 0.50), xytext=(0.64, 0.50), xycoords=axis.transAxes, arrowprops={"arrowstyle": "->", "lw": 1.8, "color": "#0ea5e9"})
         return
 
     if block_name == "Object Detection (MobileNetV2 SSD FPN)":

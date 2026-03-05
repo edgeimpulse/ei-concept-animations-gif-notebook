@@ -501,14 +501,72 @@ def _draw_reference_ml(axis: plt.Axes, block_name: str, seed: int) -> None:
         return
 
     if block_name == "Keyword Spotting (Transfer Learning)":
+        axis.axis("off")
+        axis.set_title("Keyword spotting transfer learning", fontsize=12, color="#0f172a")
+
+        left = axis.inset_axes([0.04, 0.14, 0.36, 0.72])
+        mid = axis.inset_axes([0.42, 0.20, 0.16, 0.60])
+        right = axis.inset_axes([0.60, 0.14, 0.36, 0.72])
+
+        for pane in (left, mid, right):
+            pane.set_xlim(0, 1)
+            pane.set_ylim(0, 1)
+            pane.axis("off")
+
+        left.add_patch(Rectangle((0.02, 0.02), 0.96, 0.96, fc="#ffffff", ec="#cbd5e1", lw=1.0, transform=left.transAxes))
+        right.add_patch(Rectangle((0.02, 0.02), 0.96, 0.96, fc="#ffffff", ec="#cbd5e1", lw=1.0, transform=right.transAxes))
+
+        left.text(0.05, 0.93, "Before", fontsize=8, color="#334155", weight="bold", transform=left.transAxes)
+        right.text(0.05, 0.93, "After", fontsize=8, color="#166534", weight="bold", transform=right.transAxes)
+
         time = np.linspace(0, 1, 350)
         waveform = 0.5 * np.sin(2 * np.pi * 6 * time) + 0.25 * np.sin(2 * np.pi * 18 * time)
         waveform += 0.04 * rng.normal(size=time.size)
-        axis.plot(time, waveform, color="#0ea5e9", lw=1.3)
-        axis.axvspan(0.55, 0.75, color="#22c55e", alpha=0.25, label="keyword window")
-        axis.legend(loc="upper left", fontsize=8, frameon=False)
-        _style_axis(axis, "Keyword spotting over audio stream", "Time", "Amplitude")
-        axis.set_ylim(-1.2, 1.2)
+
+        left_wave = left.inset_axes([0.08, 0.54, 0.84, 0.30])
+        left_wave.plot(time, waveform, color="#64748b", lw=1.1)
+        left_wave.set_xticks([])
+        left_wave.set_yticks([])
+        left_wave.set_ylim(-1.2, 1.2)
+
+        right_wave = right.inset_axes([0.08, 0.54, 0.84, 0.30])
+        right_wave.plot(time, waveform, color="#0ea5e9", lw=1.1)
+        right_wave.axvspan(0.56, 0.74, color="#dc2626", alpha=0.18)
+        right_wave.set_xticks([])
+        right_wave.set_yticks([])
+        right_wave.set_ylim(-1.2, 1.2)
+
+        left_probs = left.inset_axes([0.08, 0.16, 0.84, 0.28])
+        left_labels = ["speech", "noise", "wake-word"]
+        left_values = [0.52, 0.28, 0.20]
+        left_pos = np.arange(len(left_labels))
+        left_probs.barh(left_pos, left_values, color=["#cbd5e1", "#cbd5e1", "#fca5a5"])
+        left_probs.set_xlim(0, 1)
+        left_probs.set_yticks(left_pos)
+        left_probs.set_yticklabels(left_labels)
+        left_probs.grid(alpha=0.2, axis="x")
+        left_probs.tick_params(labelsize=6.8)
+
+        right_probs = right.inset_axes([0.08, 0.16, 0.84, 0.28])
+        right_labels = ["wake-word", "other", "silence"]
+        right_values = [0.91, 0.06, 0.03]
+        right_pos = np.arange(len(right_labels))
+        right_probs.barh(right_pos, right_values, color=["#22c55e", "#94a3b8", "#94a3b8"])
+        right_probs.set_xlim(0, 1)
+        right_probs.set_yticks(right_pos)
+        right_probs.set_yticklabels(right_labels)
+        right_probs.grid(alpha=0.2, axis="x")
+        right_probs.tick_params(labelsize=6.8)
+
+        mid.add_patch(Rectangle((0.08, 0.56), 0.84, 0.22, fc="#dbeafe", ec="#93c5fd", lw=1.0, transform=mid.transAxes))
+        mid.text(0.50, 0.67, "Transfer", ha="center", fontsize=7.8, color="#1e3a8a", weight="bold", transform=mid.transAxes)
+        mid.text(0.50, 0.60, "feature extractor", ha="center", fontsize=7.1, color="#1e40af", transform=mid.transAxes)
+        mid.add_patch(Rectangle((0.16, 0.30), 0.68, 0.16, fc="#dcfce7", ec="#86efac", lw=1.0, transform=mid.transAxes))
+        mid.text(0.50, 0.39, "Fine-tune head", ha="center", fontsize=7.3, color="#166534", transform=mid.transAxes)
+        mid.annotate("", xy=(0.50, 0.56), xytext=(0.50, 0.46), xycoords=mid.transAxes, arrowprops={"arrowstyle": "->", "lw": 1.2, "color": "#0ea5e9"})
+
+        axis.annotate("", xy=(0.42, 0.50), xytext=(0.40, 0.50), xycoords=axis.transAxes, arrowprops={"arrowstyle": "->", "lw": 1.6, "color": "#0ea5e9"})
+        axis.annotate("", xy=(0.60, 0.50), xytext=(0.58, 0.50), xycoords=axis.transAxes, arrowprops={"arrowstyle": "->", "lw": 1.6, "color": "#0ea5e9"})
         return
 
     if block_name == "Object Detection (MobileNetV2 SSD FPN)":
